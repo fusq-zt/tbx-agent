@@ -49,20 +49,9 @@ anatomy = [
 ]
 medsam = [
   # Isolated optional runtime for the fixed wanglab/medsam-vit-base HF port.
-  # torch>=2.6 also avoids unsafe legacy torch.load versions for the verified .bin.
-  "torch>=2.6,<3",
-  "transformers==4.57.6",
-]
-qwen-build = [
-  # Exact environment used for the pinned Qwen3.5-4B -> GGUF conversion.
-  "gguf==0.19.0",
-  "huggingface-hub==0.36.2",
-  "numpy==1.26.4",
-  "protobuf==4.25.9",
-  "safetensors==0.8.0",
-  "sentencepiece==0.2.2",
-  "torch==2.11.0",
-  "transformers==4.57.6",
+  # Keep the verified .bin loader on patched PyTorch/Transformers releases.
+  "torch>=2.13,<3",
+  "transformers==5.10.1",
 ]
 vision = [
   # D-FINE imports its profiling helper from the package root even for
@@ -74,10 +63,10 @@ vision = [
   "scipy>=1.11,<2",
   "tensorboard>=2.15,<3",
   "timm>=1.0.20,<2",
-  "torch>=2.6,<3",
-  "torchvision>=0.21,<1",
+  "torch>=2.13,<3",
+  "torchvision>=0.28,<1",
   # calflops imports AutoTokenizer even for D-FINE vision-only inference.
-  "transformers==4.57.6",
+  "transformers==5.10.1",
 ]
 dev = [
   "httpx>=0.28,<1",

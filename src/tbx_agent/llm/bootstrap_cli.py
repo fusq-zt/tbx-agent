@@ -12,10 +12,7 @@ from ..config import PROJECT_ROOT
 from .bootstrap import (
     QwenBootstrapError,
     bootstrap_paths,
-    build_model,
     configure_runtime,
-    detect_quantize_binary,
-    download_qwen_source,
     install_llama_source,
     install_windows_cuda_runtime,
     load_runtime_identity,
@@ -35,7 +32,7 @@ def _parser() -> argparse.ArgumentParser:
     project = _default_project_root()
     parser = argparse.ArgumentParser(
         description=(
-            "Build or register the exact Qwen3.5-4B Q4_K_M artifact and pinned "
+            "Register the exact prebuilt Qwen3.5-4B Q4_K_M artifact and pinned "
             "llama.cpp runtime outside the source repository."
         )
     )
@@ -57,9 +54,6 @@ def _parser() -> argparse.ArgumentParser:
         help="install the pinned Windows CUDA b10517 release (Windows x64 only)",
     )
     subparsers.add_parser(
-        "download-source", help="download and verify the pinned official Qwen snapshot"
-    )
-    subparsers.add_parser(
         "download-llama-source",
         help="download and verify the pinned b10517 source archive for a local build",
     )
@@ -69,13 +63,6 @@ def _parser() -> argparse.ArgumentParser:
     )
     register_model_parser.add_argument("model", type=Path)
     register_model_parser.add_argument("--configure", action="store_true")
-
-    build_parser = subparsers.add_parser(
-        "build-model", help="download official sources, convert, quantize, and verify"
-    )
-    build_parser.add_argument("--quantize-binary", type=Path)
-    build_parser.add_argument("--keep-bf16", action="store_true")
-    build_parser.add_argument("--configure", action="store_true")
 
     register_runtime_parser = subparsers.add_parser(
         "register-runtime",
@@ -95,12 +82,9 @@ def _parser() -> argparse.ArgumentParser:
 
     prepare = subparsers.add_parser(
         "prepare",
-        help="one-shot Windows runtime install plus exact model registration or official build",
+        help="prepare the runtime and register an existing exact Q4_K_M GGUF",
     )
-    choice = prepare.add_mutually_exclusive_group(required=True)
-    choice.add_argument("--model", type=Path, help="existing exact Q4_K_M GGUF")
-    choice.add_argument("--build-from-official", action="store_true")
-    prepare.add_argument("--keep-bf16", action="store_true")
+    prepare.add_argument("--model", type=Path, required=True, help="existing exact Q4_K_M GGUF")
     return parser
 
 
@@ -142,9 +126,6 @@ def main(argv: list[str] | None = None) -> int:
                 )
             identity = install_windows_cuda_runtime(contract, paths)
             payload.update({"runtime_id": identity["runtime_id"]})
-        elif args.action == "download-source":
-            download_qwen_source(contract, paths)
-            payload.update({"source_verified": True})
         elif args.action == "download-llama-source":
             source_path = install_llama_source(contract, paths)
             payload.update(
@@ -158,18 +139,6 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.action == "register-model":
             register_model(contract, paths, args.model)
-            if args.configure:
-                _configure(contract=contract, paths=paths, template=args.runtime_template)
-            payload.update({"model_verified": True, "configured": bool(args.configure)})
-        elif args.action == "build-model":
-            identity = load_runtime_identity(paths)
-            quantize = args.quantize_binary or detect_quantize_binary(identity)
-            build_model(
-                contract,
-                paths,
-                quantize_binary=quantize,
-                keep_bf16=args.keep_bf16,
-            )
             if args.configure:
                 _configure(contract=contract, paths=paths, template=args.runtime_template)
             payload.update({"model_verified": True, "configured": bool(args.configure)})
@@ -196,15 +165,7 @@ def main(argv: list[str] | None = None) -> int:
                 if sys.platform.startswith("win")
                 else load_runtime_identity(paths)
             )
-            if args.model is not None:
-                register_model(contract, paths, args.model)
-            else:
-                build_model(
-                    contract,
-                    paths,
-                    quantize_binary=detect_quantize_binary(identity),
-                    keep_bf16=args.keep_bf16,
-                )
+            register_model(contract, paths, args.model)
             _configure(contract=contract, paths=paths, template=args.runtime_template)
             payload.update(
                 {

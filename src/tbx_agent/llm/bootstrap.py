@@ -1,7 +1,7 @@
 """Auditable Qwen3.5/llama.cpp acquisition without repository-local binaries.
 
 The public source tree contains only pins and orchestration. Large inputs,
-derived GGUF files, native binaries, receipts, and API keys are written below
+prebuilt GGUF files, native binaries, receipts, and API keys are written below
 the operator-selected artifact/runtime roots.
 """
 
@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import http.client
-import importlib.metadata
 import json
 import os
 import re
@@ -17,7 +16,6 @@ import secrets
 import shutil
 import stat
 import subprocess
-import sys
 import time
 import urllib.error
 import urllib.request
@@ -510,88 +508,6 @@ def register_model(
     return destination
 
 
-def download_qwen_source(
-    contract: Mapping[str, Any],
-    paths: QwenBootstrapPaths,
-    *,
-    environment: Mapping[str, str] | None = None,
-    snapshot_downloader: Callable[..., str] | None = None,
-) -> Path:
-    """Acquire the official immutable Hugging Face snapshot and verify every file."""
-
-    environment = os.environ if environment is None else environment
-    qwen = contract["qwen"]
-    raw_files = qwen.get("files")
-    if not isinstance(raw_files, dict) or not raw_files:
-        raise QwenBootstrapError("Qwen source file inventory is empty")
-    pins = {
-        name: _validate_pin(record, name=name)
-        for name, record in raw_files.items()
-        if isinstance(name, str) and isinstance(record, dict)
-    }
-    if len(pins) != len(raw_files):
-        raise QwenBootstrapError("Qwen source file inventory is invalid")
-    target = paths.source_root
-    if target.exists():
-        for name, pin in pins.items():
-            _verify_file(target / name, pin)
-        return target
-    if snapshot_downloader is None:
-        try:
-            from huggingface_hub import snapshot_download
-        except ImportError as exc:
-            raise QwenBootstrapError(
-                "official source download requires the qwen-build optional dependencies"
-            ) from exc
-        snapshot_downloader = snapshot_download
-    temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.download")
-    cache = paths.runtime_root / "cache/huggingface"
-    temporary.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        result = snapshot_downloader(
-            repo_id=qwen["repo_id"],
-            revision=qwen["revision"],
-            local_dir=str(temporary),
-            cache_dir=str(cache),
-            allow_patterns=sorted(pins),
-            token=environment.get("HF_TOKEN") or None,
-        )
-        if Path(result).resolve() != temporary.resolve():
-            raise QwenBootstrapError("Hugging Face client returned an unexpected destination")
-        shutil.rmtree(temporary / ".cache", ignore_errors=True)
-        for name, pin in pins.items():
-            _verify_file(temporary / name, pin)
-        unknown = sorted(
-            child.name
-            for child in temporary.iterdir()
-            if child.is_file() and child.name not in pins
-        )
-        if unknown:
-            raise QwenBootstrapError("official snapshot contained unpinned files")
-        inventory = {
-            "schema_version": 1,
-            "repo_id": qwen["repo_id"],
-            "revision": qwen["revision"],
-            "files": [
-                {
-                    "name": name,
-                    "size_bytes": pin.size_bytes,
-                    "sha256": pin.sha256,
-                }
-                for name, pin in sorted(pins.items())
-            ],
-        }
-        _write_atomic(
-            temporary / "tbx-source-inventory.json",
-            (json.dumps(inventory, ensure_ascii=False, indent=2) + "\n").encode(),
-            mode=0o644,
-        )
-        os.replace(temporary, target)
-    finally:
-        shutil.rmtree(temporary, ignore_errors=True)
-    return target
-
-
 def install_llama_source(
     contract: Mapping[str, Any],
     paths: QwenBootstrapPaths,
@@ -627,148 +543,6 @@ def install_llama_source(
     finally:
         shutil.rmtree(extraction, ignore_errors=True)
     return target
-
-
-def _package_versions() -> dict[str, str]:
-    packages = (
-        "gguf",
-        "huggingface-hub",
-        "numpy",
-        "protobuf",
-        "safetensors",
-        "sentencepiece",
-        "torch",
-        "transformers",
-    )
-    versions: dict[str, str] = {}
-    for package in packages:
-        try:
-            versions[package] = importlib.metadata.version(package)
-        except importlib.metadata.PackageNotFoundError as exc:
-            raise QwenBootstrapError(
-                f"missing conversion dependency {package}; install the qwen-build extra"
-            ) from exc
-    return versions
-
-
-def build_model(
-    contract: Mapping[str, Any],
-    paths: QwenBootstrapPaths,
-    *,
-    quantize_binary: Path,
-    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
-    keep_bf16: bool = False,
-) -> Path:
-    """Convert the pinned official source and atomically install the exact Q4."""
-
-    versions = _package_versions()
-    qwen_source = download_qwen_source(contract, paths)
-    llama_source = install_llama_source(contract, paths)
-    quantize_binary = quantize_binary.expanduser().resolve(strict=True)
-    conversion = contract["conversion"]
-    destination = paths.model_path.resolve(strict=False)
-    q4_pin = _validate_pin(
-        {
-            "size_bytes": conversion["expected_size_bytes"],
-            "sha256": conversion["expected_sha256"],
-        },
-        name=conversion["output_name"],
-    )
-    if destination.exists():
-        _verify_file(destination, q4_pin)
-        return destination
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    work = paths.runtime_root / "tmp" / f"qwen35-build-{uuid.uuid4().hex}"
-    work.mkdir(parents=True)
-    bf16 = work / "qwen3.5-4b-text-no-mtp-bf16.gguf"
-    q4 = work / conversion["output_name"]
-    subprocess_environment = dict(os.environ)
-    for name in tuple(subprocess_environment):
-        if name.endswith("TOKEN") or name.endswith("API_KEY") or name.endswith("PASSWORD"):
-            subprocess_environment.pop(name, None)
-    subprocess_environment.update({"TEMP": str(work), "TMP": str(work), "TMPDIR": str(work)})
-    convert = [
-        sys.executable,
-        str(llama_source / "convert_hf_to_gguf.py"),
-        "--outfile",
-        str(bf16),
-        *[str(item) for item in conversion["converter_arguments"]],
-        str(qwen_source),
-    ]
-    quantize = [
-        str(quantize_binary),
-        str(bf16),
-        str(q4),
-        conversion["quantization"],
-        str(conversion["quantization_threads"]),
-    ]
-    try:
-        runner(convert, check=True, env=subprocess_environment, text=True)
-        _verify_file(
-            bf16,
-            PinnedFile(
-                name=bf16.name,
-                size_bytes=conversion["bf16_size_bytes"],
-                sha256=conversion["bf16_sha256"],
-            ),
-        )
-        runner([str(quantize_binary), "--dry-run", *quantize[1:]], check=True, text=True)
-        runner(quantize, check=True, text=True)
-        _verify_file(q4, q4_pin)
-        temporary = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.install")
-        os.replace(q4, temporary)
-        _verify_file(temporary, q4_pin)
-        os.replace(temporary, destination)
-        receipt = {
-            "schema_version": 1,
-            "build_id": "qwen35-4b-text-no-mtp-naive-q4-k-m-v1",
-            "upstream": {
-                "repo_id": contract["qwen"]["repo_id"],
-                "revision": contract["qwen"]["revision"],
-            },
-            "converter": {
-                "project": contract["llama_cpp"]["project"],
-                "tag": contract["llama_cpp"]["tag"],
-                "commit": contract["llama_cpp"]["commit"],
-                "arguments": conversion["converter_arguments"],
-                "mtp_included": False,
-            },
-            "quantization": {
-                "format": conversion["quantization"],
-                "importance_matrix": None,
-                "threads": conversion["quantization_threads"],
-            },
-            "artifact": {
-                "size_bytes": q4_pin.size_bytes,
-                "sha256": q4_pin.sha256,
-            },
-            "build_environment": {
-                "python": sys.version.split()[0],
-                "packages": versions,
-            },
-            "safety": {
-                "locked_or_hidden_test_used": False,
-                "clinical_validation": False,
-            },
-        }
-        _write_atomic(
-            paths.runtime_root / "provenance/qwen35-4b-q4-k-m-build.json",
-            (json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode(),
-            mode=0o644,
-        )
-        if keep_bf16:
-            retained = paths.artifact_root / "llm/qwen3.5-4b-text-no-mtp-bf16.gguf"
-            retained.parent.mkdir(parents=True, exist_ok=True)
-            if retained.exists():
-                raise QwenBootstrapError("refusing to overwrite an existing BF16 artifact")
-            os.replace(bf16, retained)
-    except subprocess.CalledProcessError as exc:
-        raise QwenBootstrapError(
-            f"Qwen conversion command failed with exit {exc.returncode}"
-        ) from exc
-    finally:
-        shutil.rmtree(work, ignore_errors=True)
-    return destination
 
 
 def ensure_api_key(path: Path) -> Path:
@@ -830,15 +604,6 @@ def configure_runtime(
     env_bytes = "".join(f"{name}={value}\n" for name, value in env_values.items()).encode()
     _write_atomic(paths.environment_file, env_bytes, mode=0o600)
     return paths.runtime_config
-
-
-def detect_quantize_binary(runtime_identity: Mapping[str, str]) -> Path:
-    binary = Path(runtime_identity["binary_path"])
-    candidates = [binary.with_name("llama-quantize.exe"), binary.with_name("llama-quantize")]
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate
-    raise QwenBootstrapError("registered runtime bundle contains no llama-quantize executable")
 
 
 def bootstrap_paths(

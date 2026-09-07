@@ -9,14 +9,15 @@
 
 | 检查 | 结果与范围 |
 | --- | --- |
-| 完整 pytest | 1,149 passed、3 skipped，143.38 秒；跳过的平台权限或可选依赖条件以 pytest 报告为准 |
+| 完整 pytest | 1,153 passed、3 skipped，133.64 秒；跳过项为本机软链接权限、POSIX 可执行位检查、未显式启用的真实模型 UI 集成测试 |
 | Ruff 与源码发布检查 | 通过；检查敏感文件、训练代码和其他排除内容 |
 | 真实启动 Demo | 5 个 HTTP 端点返回 200，验证后已停止服务；视觉结果仍为模拟 |
 | 视觉包安装与输出一致性 | 已实际安装；合成图像上，CPU 推理的打包前后分类与最终检测输出完全一致 |
+| 新版依赖兼容性 | Transformers 5.10.1 / PyTorch 2.13.0；分类、检测与可选 MedSAM 均完成固定权重加载和合成输入推理 |
 
 视觉输出一致性只验证推理工件导出和安装没有改变这次输入的结果，不是模型性能评估。
-Docker 未实际运行。GitHub Windows / Linux CI 状态应查看仓库的 Actions 记录，
-这里不把尚未确认完成的 CI 写成通过。
+Docker 未实际运行。Windows / Linux CI 在每次提交后运行，最新结果见
+[GitHub Actions](https://github.com/fusq-zt/tbx-agent/actions/workflows/ci.yml)。
 
 ## 覆盖层级
 

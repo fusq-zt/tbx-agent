@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import subprocess
 import zipfile
 from pathlib import Path
 
@@ -59,6 +58,65 @@ def test_linux_source_download_action_accepts_an_external_runtime_root(tmp_path:
     assert args.runtime_root == tmp_path / "runtime"
 
 
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["download-source"],
+        ["build-model"],
+        ["prepare"],
+        ["prepare", "--model", "existing.gguf", "--build-from-official"],
+        ["prepare", "--model", "existing.gguf", "--keep-bf16"],
+    ],
+)
+def test_inference_cli_rejects_conversion_and_requires_an_existing_model(argv: list[str]) -> None:
+    with pytest.raises(SystemExit) as error:
+        bootstrap_cli._parser().parse_args(argv)
+    assert error.value.code == 2
+
+
+def test_prepare_registers_existing_model_and_configures_registered_runtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    paths = _paths(tmp_path)
+    contract = _contract()
+    model = tmp_path / "existing.gguf"
+    model.write_bytes(b"q4")
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    binary = bundle / "llama-server"
+    binary.write_bytes(b"binary")
+    binary.chmod(0o755)
+    archive = tmp_path / "release.tar"
+    archive.write_bytes(b"release")
+    subject.register_runtime_bundle(
+        contract,
+        paths,
+        bundle_dir=bundle,
+        binary_name="llama-server",
+        expected_binary_sha256=_digest(b"binary"),
+        release_archive=archive,
+        expected_release_sha256=_digest(b"release"),
+        platform_id="test-platform",
+    )
+    monkeypatch.setattr(bootstrap_cli, "load_source_contract", lambda _path: contract)
+    monkeypatch.setattr(bootstrap_cli.sys, "platform", "linux")
+
+    result = bootstrap_cli.main(
+        [
+            "--artifact-root", str(paths.artifact_root),
+            "--runtime-root", str(paths.runtime_root),
+            "prepare", "--model", str(model),
+        ]
+    )
+
+    assert result == 0
+    assert paths.model_path.read_bytes() == b"q4"
+    assert subject.verify_prepared_runtime(paths.runtime_config)["model_sha256"] == _digest(b"q4")
+    output = json.loads(capsys.readouterr().out)
+    assert output["configured"] is True
+    assert output["model_verified"] is True
+
+
 def _zip(path: Path, files: dict[str, bytes]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(path, "w") as archive:
@@ -92,41 +150,6 @@ def test_register_model_rehashes_and_installs_atomically(tmp_path: Path) -> None
     source_file.write_bytes(b"wrong")
     with pytest.raises(subject.QwenBootstrapError, match="size mismatch"):
         subject.register_model(_contract(), _paths(tmp_path / "other"), source_file)
-
-
-def test_download_official_snapshot_uses_revision_and_verifies_every_file(
-    tmp_path: Path,
-) -> None:
-    paths = _paths(tmp_path)
-    contract = _contract()
-    files = {"config.json": b"{}", "model.safetensors": b"weights"}
-    contract["qwen"]["files"] = {
-        name: {"size_bytes": len(data), "sha256": _digest(data)}
-        for name, data in files.items()
-    }
-    observed: dict[str, object] = {}
-
-    def snapshot(**kwargs):
-        observed.update(kwargs)
-        target = Path(kwargs["local_dir"])
-        target.mkdir(parents=True)
-        for name, data in files.items():
-            (target / name).write_bytes(data)
-        return str(target)
-
-    source = subject.download_qwen_source(
-        contract,
-        paths,
-        environment={"HF_TOKEN": "not-printed"},
-        snapshot_downloader=snapshot,
-    )
-
-    assert source == paths.source_root
-    assert observed["revision"] == "a" * 40
-    assert observed["token"] == "not-printed"
-    inventory = json.loads((source / "tbx-source-inventory.json").read_text())
-    assert {record["name"] for record in inventory["files"]} == set(files)
-    assert "not-printed" not in json.dumps(inventory)
 
 
 def test_safe_zip_extraction_rejects_traversal(tmp_path: Path) -> None:
@@ -302,43 +325,6 @@ def test_register_runtime_rejects_non_executable_posix_binary(tmp_path: Path) ->
             expected_release_sha256=_digest(b"receipt"),
             platform_id="linux-cpu-x86_64",
         )
-
-
-def test_build_model_uses_shell_free_argv_and_redacts_tokens(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    paths = _paths(tmp_path)
-    contract = _contract()
-    qwen_source = paths.source_root
-    qwen_source.mkdir(parents=True)
-    llama_source = paths.llama_source_root
-    llama_source.mkdir(parents=True)
-    (llama_source / "convert_hf_to_gguf.py").write_text("# fixture")
-    quantize = tmp_path / "llama-quantize"
-    quantize.write_bytes(b"binary")
-    monkeypatch.setattr(subject, "_package_versions", lambda: {"fixture": "1"})
-    monkeypatch.setattr(subject, "download_qwen_source", lambda *_args, **_kwargs: qwen_source)
-    monkeypatch.setattr(subject, "install_llama_source", lambda *_args, **_kwargs: llama_source)
-    monkeypatch.setenv("SHOULD_NOT_LEAK_TOKEN", "secret")
-    calls: list[tuple[list[str], dict | None]] = []
-
-    def runner(argv, **kwargs):
-        calls.append((list(argv), kwargs.get("env")))
-        if "--outfile" in argv:
-            Path(argv[argv.index("--outfile") + 1]).write_bytes(b"bf16")
-        elif "--dry-run" not in argv:
-            Path(argv[2]).write_bytes(b"q4")
-        return subprocess.CompletedProcess(argv, 0)
-
-    result = subject.build_model(
-        contract, paths, quantize_binary=quantize, runner=runner
-    )
-
-    assert result.read_bytes() == b"q4"
-    assert all(isinstance(call[0], list) for call in calls)
-    assert "SHOULD_NOT_LEAK_TOKEN" not in calls[0][1]
-    receipt = (paths.runtime_root / "provenance/qwen35-4b-q4-k-m-build.json").read_text()
-    assert "secret" not in receipt
 
 
 def test_configure_writes_secret_free_env_pointer_and_verifies_assets(tmp_path: Path) -> None:
