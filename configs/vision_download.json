@@ -4,8 +4,10 @@
   "filename": "tbx-rank03-inference-v1.zip",
   "sha256": "0312172e649dffd774311db397066a916dc65845627aa1489049bfa36d971594",
   "size_bytes": 219595278,
-  "download_url": null,
-  "publication_status": "pending",
+  "download_url": "https://github.com/fusq-zt/tbx-agent/releases/download/v0.1.0/tbx-rank03-inference-v1.zip",
+  "release_url": "https://github.com/fusq-zt/tbx-agent/releases/tag/v0.1.0",
+  "publication_status": "private_release",
+  "access": "Sign in to an authorized GitHub account, download the ZIP in a browser, then install with --bundle. Anonymous --url cannot access private assets.",
   "contents": [
     "ConvNeXt-Tiny classifier inference state",
     "D-FINE-L detector EMA inference state",

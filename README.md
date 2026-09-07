@@ -49,7 +49,15 @@ flowchart LR
 
 ## 快速体验
 
-准备 **Python 3.11–3.13**，下载源码并在项目根目录打开终端。
+准备 **Python 3.11–3.13**。当前[仓库](https://github.com/fusq-zt/tbx-agent)为私有，
+请使用已获访问权限的 GitHub 账号克隆：
+
+```bash
+git clone https://github.com/fusq-zt/tbx-agent.git
+cd tbx-agent
+```
+
+也可登录仓库页面，选择 **Code → Download ZIP**，解压后在源码根目录打开终端。
 Demo 使用标记为 `DEMO / MOCK` 的模拟视觉结果，**无需模型、数据集或 LLM 服务**。
 首次安装 Python 依赖需要联网。
 
@@ -90,7 +98,7 @@ sh scripts/run_local.sh --demo
 
 | 组件 | 获取方式 | 状态 |
 | --- | --- | --- |
-| 分类器 + 检测器 | 独立视觉推理 ZIP；校验清单与 SHA-256 | **公开下载链接待配置** |
+| 分类器 + 检测器 | [v0.1.0 Release](https://github.com/fusq-zt/tbx-agent/releases/tag/v0.1.0) 的独立视觉 ZIP | 私有附件，需登录获授权账号 |
 | D-FINE 推理源码 | 固定上游源码，下载到外部目录 | 支持显式准备 |
 | PSPNet 肺野模型 | TorchXRayVision 官方 Release | 支持显式下载与校验 |
 | MedGemma + llama.cpp | 固定 GGUF 上游版本和运行时 | Windows 可自动准备；Linux 先构建并登记运行时 |
@@ -104,7 +112,8 @@ sh scripts/run_local.sh --demo
 ```
 
 按 [真实模型部署](docs/deployment/inference_models.md) 完成“安装视觉包 → 准备 D-FINE / PSPNet →
-准备 MedGemma → 预检启动”。该流程不要求训练。公开链接配置前，已有匹配模型包可安装，Demo 不受影响。
+准备 MedGemma → 预检启动”。该流程不要求训练。请在浏览器登录后，从 Release 的 Assets 下载
+`tbx-rank03-inference-v1.zip`，再用 `--bundle` 安装；匿名 `--url` 无法获取私有附件。
 
 ## 文档导航
 
@@ -124,5 +133,6 @@ sh scripts/run_local.sh --demo
 默认只监听本机。病例、上传文件、数据库、模型和密钥存放在仓库外；外部 LLM 服务会接收允许发送的
 文本上下文，需由部署者配置和审查。当前为单进程部署，没有机构级高可用或经过验证的纵向影像比较。
 
-项目代码的发布许可证尚待维护者确定；第三方代码、模型与指南各自的条款独立适用。
+仓库当前保持私有，公开可见性与项目代码的发布许可证尚待维护者确认；
+第三方代码、模型与指南各自的条款独立适用。
 本仓库不授予未明确获得的模型再分发权限，详见 [第三方来源说明](THIRD_PARTY_NOTICES.md)。

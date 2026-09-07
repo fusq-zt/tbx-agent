@@ -1,14 +1,15 @@
 # GitHub 与权重发布
 
-仓库代码、独立模型包与第三方模型分别管理。本页给出发布方案，不表示已完成公开发布或许可审批。
+仓库代码、独立模型包与第三方模型分别管理。当前采用私有 GitHub 仓库，公开可见性与许可尚待确认。
 
 ## 当前状态
 
 - 视觉包 `tbx-rank03-inference-v1.zip` 已准备，大小与 SHA-256 见 [模型部署](inference_models.md)。
-- 公开下载地址尚未配置；不要把占位地址视为可用链接。
+- 代码仓库：[fusq-zt/tbx-agent](https://github.com/fusq-zt/tbx-agent)。
+- 模型入口：[v0.1.0 Release](https://github.com/fusq-zt/tbx-agent/releases/tag/v0.1.0)，下载其 Assets 中的视觉 ZIP。
 - 源码许可证尚待维护者决定。模型与数据来源的条款单独适用。
 - 私有仓库及其 Release 仅供有访问权限的账号下载；默认匿名 HTTPS 安装不负责 GitHub 私有登录，
-  可在浏览器登录下载后使用 `--bundle` 安装。
+  请在浏览器登录下载后使用 `--bundle` 安装，不要对私有附件使用匿名 `--url`。
 
 ## 推荐托管方式
 

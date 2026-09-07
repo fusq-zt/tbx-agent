@@ -1,6 +1,20 @@
 # 快速部署
 
-Demo 不需要模型或 LLM 服务。真实模式需另行准备视觉包与语言模型；当前视觉包公开下载链接待配置。
+Demo 不需要模型或 LLM 服务。真实模式使用
+[v0.1.0 Release](https://github.com/fusq-zt/tbx-agent/releases/tag/v0.1.0) 的视觉包与另外准备的语言模型。
+当前仓库和附件均为私有，需登录获授权账号；公开可见性与源码许可证尚待维护者确认。
+
+## 获取源码
+
+使用有访问权限的 GitHub 账号克隆：
+
+```bash
+git clone https://github.com/fusq-zt/tbx-agent.git
+cd tbx-agent
+```
+
+没有 Git 时，也可登录[仓库页面](https://github.com/fusq-zt/tbx-agent)，
+选择 **Code → Download ZIP**，解压后进入源码根目录。
 
 ## 环境与 Demo
 

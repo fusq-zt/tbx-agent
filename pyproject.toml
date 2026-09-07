@@ -105,7 +105,7 @@ packages = ["src/tbx_agent"]
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 markers = [
   "integration: requires optional HTTP/runtime dependencies",
   "real_rank03: loads frozen rank03 assets and is never run by default",

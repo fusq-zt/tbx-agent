@@ -16,6 +16,9 @@
 | BGE-M3 | 部署者自备固定本地快照，详见 [RAG](../retrieval.md) |
 
 分类/检测包独立发布，不存在“下载通用初始化权重即可替代”的路径。
+从 [v0.1.0 Release](https://github.com/fusq-zt/tbx-agent/releases/tag/v0.1.0) 的 Assets 获取
+`tbx-rank03-inference-v1.zip`。当前为私有附件，须登录获授权账号下载，再使用本地 `--bundle` 安装；
+匿名 `--url` 不适用于此附件。公开可见性和源码许可证仍待维护者确认。
 安装器生成新的外部运行契约；旧模板或不匹配的权重会被拒绝。
 
 ## 官方 PSPNet 下载

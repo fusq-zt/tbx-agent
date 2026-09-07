@@ -1,7 +1,10 @@
 # 真实模型部署
 
 本页只安装已有推理工件，不含训练步骤，也不需要数据集。
-**视觉模型包的公开下载链接待配置。** 已取得匹配 ZIP 可按下述安装；否则先使用 [Demo](quickstart.md)。
+视觉模型包位于 [v0.1.0 Release](https://github.com/fusq-zt/tbx-agent/releases/tag/v0.1.0)。
+当前仓库为私有：在浏览器中登录已获授权的 GitHub 账号，从 Assets 下载
+`tbx-rank03-inference-v1.zip`，然后执行本地安装。公开可见性与源码许可证尚待维护者确认。
+暂未取得访问权限时，可在已有源码上使用 [Demo](quickstart.md)。
 
 ## 1. 环境
 
@@ -54,9 +57,8 @@ python scripts/install_vision_bundle.py \
 
 安装器校验清单与文件哈希，写入外部模型根，并生成 `rank03_runtime.json`。
 目标运行契约必须是新文件；重复安装或升级时使用新的输出路径，并在检查后切换环境变量。
-将来有公开 HTTPS 地址后可用 `--url` 替代 `--bundle`；远程安装必须提供 `--sha256`。
-若附件位于私有 GitHub Release，先在有访问权限的浏览器中下载，再使用本地 `--bundle`；
-安装器不负责 GitHub 私有附件认证，不要把令牌拼到 URL 中。
+当前私有 Release 请使用本地 `--bundle`。安装器的匿名 `--url` 不支持 GitHub 私有附件认证；
+不要把令牌拼到 URL 中。只有日后提供可匿名访问的 HTTPS 地址时，才可使用 `--url` 并同时提供 `--sha256`。
 不要把仓库模板当成已安装契约，也不要绕过模型身份校验。
 
 ## 3. D-FINE 与 PSPNet
