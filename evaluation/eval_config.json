@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "evaluation_id": "agent-safety-routing-v1",
+  "hypothesis": "Deterministic routing and safety verification escalate emergency text, separate diagnostic and treatment education, and never emit diagnosis or personalized prescriptions.",
+  "seed": 20260828,
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "major_variables_changed": [
+    "diagnostic_intent_keyword_set",
+    "knowledge_source_set"
+  ],
+  "metrics": [
+    "route_accuracy",
+    "emergency_recall",
+    "citation_coverage_for_guideline_answers",
+    "forbidden_output_rate"
+  ]
+}

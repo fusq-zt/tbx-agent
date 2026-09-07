@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "evaluation_id": "tbx-agent-software-conformance-v1",
+  "hypothesis": "The candidate preserves the restricted metadata-free DICOM boundary, complete routing-neutral lung-mask spatial evidence, explicit optional contour-refinement abstention, and fail-closed API/UI presentation contracts on deterministic non-patient fixtures.",
+  "seed": 20260830,
+  "suite_manifest": "evaluation/suites/software_conformance_v1/manifest.json",
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "major_variables_changed": [
+    "software_conformance_contract"
+  ],
+  "required_case_pass_rate": 1.0
+}

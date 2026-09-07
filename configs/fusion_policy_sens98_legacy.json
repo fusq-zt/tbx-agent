@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "policy_id": "rank03-agent-screening-demo-official-val-sens98-v1",
+  "purpose": "research_demo_screening_only",
+  "classifier_rule": "p_tb_gte_threshold",
+  "classifier_threshold": 0.027215289,
+  "classifier_target_sensitivity_on_selection_split": 0.98,
+  "classifier_specificity_on_selection_split": 0.986875,
+  "detector_rule": "max_category_agnostic_score_gte_threshold",
+  "detector_threshold": 0.069879934,
+  "detector_target_sensitivity_on_selection_split": 0.98,
+  "detector_specificity_on_selection_split": 0.98625,
+  "agreement_flagged": "model_flagged",
+  "agreement_not_flagged": "model_not_flagged",
+  "disagreement": "pending_human_review",
+  "technical_failure": "technical_failure",
+  "selection_dataset": "frozen official TBX11K validation, 1800 images",
+  "selection_split_sha256": "2cadd49c24d4b2b7f3bc4a40a498aa74582acb8efbce50758b106626db5601aa",
+  "analysis_report": "../reports/rank03_sensitivity_specificity_official_val_20260828.md",
+  "clinical_validation": false,
+  "warning": "Thresholds were selected and measured on the same internal validation split and require independent external calibration before any real-world use."
+}
+

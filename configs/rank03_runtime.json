@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "template": true,
+  "model_bundle_id": "inference-bundle-required",
+  "source_revision": "generated-by-install-vision-bundle",
+  "classifier": {
+    "architecture": "convnext_tiny.fb_in1k",
+    "checkpoint_path": "artifact://rank03/classifier/best.pt",
+    "checkpoint_sha256": "REQUIRED_GENERATED_SHA256",
+    "config_path": "artifact://rank03/classifier/config.json",
+    "config_sha256": "REQUIRED_GENERATED_SHA256",
+    "input_size": 320,
+    "probability_order": ["healthy", "sick_non_tb", "tb"],
+    "normalization_mean": [0.485, 0.456, 0.406],
+    "normalization_std": [0.229, 0.224, 0.225],
+    "amp": true
+  },
+  "detector": {
+    "architecture": "D-FINE-L HGNetv2-B4",
+    "checkpoint_path": "artifact://rank03/detector/best.pt",
+    "checkpoint_sha256": "REQUIRED_GENERATED_SHA256",
+    "resolved_config_path": "artifact://rank03/detector/resolved_config.json",
+    "resolved_config_sha256": "REQUIRED_GENERATED_SHA256",
+    "source_root": "artifact://sources/D-FINE",
+    "base_config_path": "artifact://sources/D-FINE/configs/dfine/dfine_hgnetv2_l_coco.yml",
+    "input_size": 512,
+    "native_label": 0,
+    "native_top_queries": 300,
+    "export_floor": 0.05,
+    "bbox_format": "xyxy_original_image_pixels",
+    "tta": "none",
+    "precision": "fp32"
+  },
+  "validation_scope": {
+    "dataset": "Declared by the separately downloaded inference bundle",
+    "images": 0,
+    "hidden_or_locked_test_used": false,
+    "clinical_validation": false,
+    "performance_claims_inherited": false
+  },
+  "weights_distributed_by_repository": false,
+  "startup_instruction": "Download the published inference bundle, run scripts/install_vision_bundle.py, then set TBX_AGENT_RANK03_RUNTIME_CONFIG to the generated external contract."
+}

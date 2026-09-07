@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "suite_id": "tbx-agent-software-conformance",
+  "suite_version": "1.0.0",
+  "title": "TBX-Agent synthetic imaging software conformance contracts",
+  "purpose": "Software regression checks for restricted DICOM input, PSPNet-shaped anatomy evidence, deterministic spatial localization, optional MedSAM-shaped contour evidence, and API/UI evidence boundaries only; never model selection or clinical validation.",
+  "fixture_kind": "synthetic_non_clinical",
+  "clinical_validation": false,
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "cases_file": "cases.jsonl",
+  "cases_sha256": "5f63d078d5e89182df0259d14bb637e1f8ce29b67654d9d7e84dc321884a573a",
+  "expected_case_count": 8,
+  "required_contracts": [
+    "dicom_canonical_metadata_free",
+    "dicom_unsafe_burned_in_rejected",
+    "anatomy_spatial_localization",
+    "anatomy_qc_failure_abstains",
+    "refinement_prompt_accounting",
+    "api_transparent_artifact_boundary",
+    "ui_routing_boundary_fail_closed",
+    "ui_refinement_failure_degrades_safely"
+  ],
+  "split_kind": "none_synthetic_software_suite",
+  "change_policy": "Published case IDs and meanings are immutable. Add or change behavior only in a new semantic suite version and bind the exact cases.jsonl SHA-256."
+}

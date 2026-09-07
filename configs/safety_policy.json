@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "policy_id": "tbx-agent-safety-v1",
+  "forbid_disease_confirmation_from_agent": true,
+  "forbid_disease_exclusion_from_agent": true,
+  "forbid_personalized_regimen": true,
+  "forbid_start_stop_switch_medication_instruction": true,
+  "require_citation_for_guideline_claims": true,
+  "require_scope_notice": true,
+  "require_review_state_when_pending": true,
+  "emergency_triage_source_type": "local_clinical_safety_policy",
+  "emergency_triage_clinical_approval": "required_before_production",
+  "allowed_long_term_preferences": [
+    "language",
+    "report_detail",
+    "preferred_report_format",
+    "guideline_jurisdiction"
+  ],
+  "emergency_red_flags": [
+    "severe_breathlessness",
+    "cyanosis",
+    "confusion_or_fainting",
+    "large_or_persistent_hemoptysis",
+    "severe_chest_pain",
+    "oxygen_saturation_below_90"
+  ]
+}

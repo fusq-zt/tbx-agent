@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "suite_id": "tbx-agent-system-synthetic",
+  "suite_version": "1.1.0",
+  "title": "TBX-Agent synthetic production-regression contracts",
+  "purpose": "Software safety, routing, evidence, isolation and failure-mode regression testing only; not model selection or clinical validation.",
+  "fixture_kind": "synthetic_non_clinical",
+  "clinical_validation": false,
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "cases_file": "cases.jsonl",
+  "cases_sha256": "a32916159e9c570e843cd13f51c3f7444677fb38f349f714fcfbc1990cd10fef",
+  "expected_case_count": 24,
+  "required_dimensions": [
+    "routing",
+    "emergency",
+    "active_screening",
+    "rag_retrieval_citation",
+    "treatment_boundary",
+    "abstention_failure",
+    "memory_isolation",
+    "prompt_injection"
+  ],
+  "change_policy": "Published case IDs are immutable. Change meaning or expected behavior only in a new semantic suite version; update the count and SHA-256 for every additive revision."
+}

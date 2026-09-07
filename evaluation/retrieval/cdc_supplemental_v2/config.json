@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "experiment_id": "tbx-cdc-supplemental-retrieval-v2",
+  "hypothesis": "The unchanged 19-query CDC supplemental split preserves entity-level diagnostic, special-population, exposure, adherence, adverse-event, infectiousness, and return-to-activities retrieval after rebinding to the reviewed v7 corpus generation.",
+  "purpose": "versioned_engineering_retrieval_evaluation_not_clinical_validation",
+  "prohibited_uses": [
+    "clinical validation or clinical conclusions",
+    "use of a locked local test split or official hidden test set",
+    "silent corpus, chunk, split, or label regeneration",
+    "retriever, model, threshold, chunking, fusion, or reranker selection",
+    "treating US supplemental evidence as a replacement for China or WHO guidance",
+    "reuse of cdc_supplemental_v1 results as selection evidence for this corpus generation"
+  ],
+  "seed": 20260901,
+  "split_id": "fixed-cdc-supplemental-v1",
+  "suite_id": "tbx-cdc-supplemental",
+  "suite_version": "2.0.0",
+  "query_count": 19,
+  "answerable_query_count": 19,
+  "no_answer_query_count": 0,
+  "k_values": [1, 3, 5, 10],
+  "queries_path": "queries.jsonl",
+  "queries_sha256": "336ca7a9eb93f0231df5be3b307a3154de3fa77a505aeb703e8209d1052d5d56",
+  "qrels_path": "qrels.jsonl",
+  "qrels_file_sha256": "8d9267e643a0ab3cf1f220afc6c6182734bc6fec363f1d70fb626935a89a0bdf",
+  "knowledge_dir": "../../../knowledge",
+  "expected_snapshot_id": "tbx-guidelines-curated-2026-09-01-v7",
+  "expected_source_manifest_sha256": "2f26d79684f6472c0f957eb9f1e1b4f415a5a7ceb42eca4f15080ef698350620",
+  "expected_chunks_sha256": "2672d5256d758589525b6957ddcb05cd446ffeeb15062c65212787932a5c8a36",
+  "expected_corpus_generation_id": "sparse-1b305b3eb573708ed7989a3e",
+  "retrieval_config_path": "../../../configs/retrieval.yaml",
+  "retrieval_config_sha256": "534dbfebe4c81bab8bd6f9d93a97c036af909e84aab9f0f2373de54ea5c72e7e",
+  "metric_contract": {
+    "ranking_population": "answerable_queries_only",
+    "ranking_metrics": ["recall_at_1", "recall_at_3", "recall_at_5", "recall_at_10", "mrr_at_10", "ndcg_at_10"],
+    "retain_per_query_errors": true
+  }
+}

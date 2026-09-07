@@ -1,0 +1,81 @@
+app:
+  name: TBX-Agent
+  version: 0.1.0
+  locale: zh-CN
+  product_label: "肺结核辅助筛查与诊疗信息支持"
+  disclaimer: "本系统仅提供辅助筛查与指南信息，不用于确诊，也不生成个体化处方。"
+
+deployment:
+  # research/development preserve the local single-user API contract.
+  # production requires the signed trusted-proxy identity contract below.
+  profile: research
+  # Runtime startup verifies executable/model/config identities but does not
+  # require this maintainer checkout's historical benchmark receipts.
+  # Maintainers use TBX_AGENT_PREFLIGHT_MODE=release for release-evidence audits.
+  preflight_mode: runtime
+
+runtime:
+  # Interactive runs use the pinned local models by default. Mock remains an
+  # explicit test-only backend and must be selected through an isolated test config.
+  vision_backend: rank03
+  openai_enabled: false
+  narrator_backend: llama_cpp
+  require_real_inference: true
+  require_llm_inference: true
+  # Optional review evidence. It never changes the frozen rank03 route.
+  anatomy_backend: xrv_pspnet
+  require_anatomy_inference: false
+  anatomy_max_workers: 1
+  # Optional D-FINE box-prompt contour visualization. Enable only after
+  # bootstrapping the pinned `medsam_refinement` artifact group and [medsam] extra.
+  contour_refinement_backend: none
+  contour_refinement_device: auto
+  # Production local narrator: MedGemma 1.5 4B Q4_K_M behind a separately
+  # supervised, OpenAI-compatible llama-server.  The multimodal projector is
+  # intentionally not loaded: TBX-Agent's validated CXR tools remain the image
+  # evidence source.
+  llama_cpp_base_url: http://127.0.0.1:11435
+  llama_cpp_model_alias: tbx-medgemma-1.5-4b-it-q4-k-m
+  llama_cpp_model_path: artifact://llm/medgemma-1.5-4b-it-Q4_K_M.gguf
+  llama_cpp_model_sha256: b31becdf4f39561800505514cce67681604fe449d04dd35c8c92fd7848c6d7bd
+  llama_cpp_server_build: b10517
+  # Set LLAMA_CPP_API_KEY or LLAMA_CPP_API_KEY_FILE at deployment time.
+  llama_cpp_api_key_file: ""
+  llama_cpp_timeout_seconds: 120
+  llama_cpp_max_response_bytes: 65536
+  llama_cpp_allow_remote: false
+  # Ollama is retained only as an optional reference benchmark backend.
+  ollama_base_url: http://127.0.0.1:11434
+  ollama_model: gemma4:latest
+  ollama_model_digest: ""
+  ollama_timeout_seconds: 120
+  ollama_max_response_bytes: 65536
+  ollama_allow_remote: false
+  max_upload_bytes: 20971520
+  retain_uploaded_image: true
+  audit_enabled: true
+  # Bounded controller: one action is selected after each observation.
+  max_agent_steps: 5
+  max_tool_calls: 4
+  max_expensive_vision_calls: 3
+  agent_tool_cost_budget: 10
+
+privacy:
+  allow_real_name: false
+  allow_raw_phi_in_external_tracing: false
+  allow_case_content_in_user_memory: false
+
+security:
+  # Keep the shared secret in TBX_AGENT_TRUSTED_PROXY_HMAC_SECRET only.
+  trusted_proxy_auth_enabled: false
+  trusted_proxy_replay_window_seconds: 60
+  max_request_body_bytes: 23068672
+  max_concurrent_requests: 16
+  rate_limit_requests_per_minute: 120
+  rate_limit_burst: 30
+  hsts_enabled: false
+
+observability:
+  metrics_enabled: false
+  metrics_allow_loopback: true
+  # Optional remote access uses TBX_AGENT_METRICS_ADMIN_TOKEN; never YAML.

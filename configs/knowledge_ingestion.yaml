@@ -1,0 +1,45 @@
+schema_version: 1
+pipeline_version: tbx-knowledge-ingestion-v2-column-aware
+offline_only: true
+
+# Generated corpora can become large and therefore live outside the source tree.
+output_dir: runtime://knowledge_ingestion
+
+extraction:
+  # pdfplumber is selected explicitly because the production build must retain tables.
+  # Use `auto` only for a documented exploratory build; pypdf fallback cannot recover tables.
+  pdf_engine: pdfplumber
+  # This reviewed source is a mixed full-width/two-column journal layout.
+  # The extractor detects the column region per page and reads left before right.
+  pdf_layout_mode: two_column
+  min_pdf_page_characters: 24
+  fail_on_suspected_scanned_page: true
+  require_pdf_table_detection: true
+  html_remove_selectors:
+    - script
+    - style
+    - noscript
+    - nav
+    - footer
+
+chunking:
+  min_characters: 240
+  target_characters: 700
+  max_characters: 1100
+  overlap_blocks: 1
+
+sources:
+  - source_id: china_tb_imaging_standard_2021
+    input_path: ../knowledge/sources/china_tb_imaging_standard_2021.pdf
+    format: pdf
+    title: 肺结核影像诊断标准
+    organization: 中华医学会放射学分会传染病放射学组等六个专业组织
+    publication_year: 2021
+    jurisdiction: China
+    language: zh-CN
+    url: https://doi.org/10.19871/j.cnki.xfcrbzz.2021.01.001
+    topics:
+      - imaging
+      - diagnostic_support
+      - confirmation_boundary
+    expected_sha256: 1ba4807eae2a5ee0e5c6f2085a53a19d0235dc090707907d6dfd0fec6c80368c

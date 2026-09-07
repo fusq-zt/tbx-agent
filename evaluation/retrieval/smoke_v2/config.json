@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "experiment_id": "tbx-rag-bm25-engineering-smoke-v2",
+  "hypothesis": "The frozen metadata-gated BM25 generation can execute a small deterministic retrieval contract without corpus/config drift; the labels are non-expert engineering fixtures and do not estimate medical relevance.",
+  "purpose": "engineering_smoke_only",
+  "prohibited_uses": [
+    "clinical validation or clinical conclusions",
+    "retriever, model, threshold, chunking, fusion, or reranker selection",
+    "comparison with a locked local test split or official hidden test set"
+  ],
+  "seed": 20260829,
+  "split_id": "fixed-engineering-smoke-v2",
+  "suite_id": "tbx-rag-engineering-smoke",
+  "suite_version": "2.0.0",
+  "k": 5,
+  "queries_path": "queries.jsonl",
+  "queries_sha256": "c050b8b1c43fa2dc584b9985a07f83446d54f0366a9f7d403c10036f88bf7e93",
+  "qrels_path": "qrels.jsonl",
+  "qrels_file_sha256": "8fa1c143395097154d7f3c660d9cac99907ac5c2ab98a90c0fb7d01a357e3f9c",
+  "knowledge_dir": "../../../knowledge",
+  "expected_snapshot_id": "tbx-guidelines-curated-2026-08-31-v4",
+  "expected_source_manifest_sha256": "83b5bdb1a70e1c8eea87b2256daf58ff2403bfe94630829527189ec37264f2d8",
+  "expected_chunks_sha256": "29b3c92c01ce181e6f193e499d8d27405e4ab6097798703024bc41481fe00537",
+  "expected_corpus_generation_id": "sparse-7e4aa83d3b55386464a3b7c0",
+  "retrieval_config_path": "../../../configs/retrieval.yaml",
+  "retrieval_config_sha256": "534dbfebe4c81bab8bd6f9d93a97c036af909e84aab9f0f2373de54ea5c72e7e",
+  "backend_contract": {
+    "backend": "deterministic_bm25",
+    "retrieval_version": "tbx-retrieval-v1",
+    "dense_enabled": false,
+    "reranker_enabled": false
+  },
+  "regression_policy": {
+    "paired_same_suite_only": true,
+    "maximum_absolute_metric_drop": 0.0
+  }
+}

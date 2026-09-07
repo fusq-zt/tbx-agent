@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "suite_id": "tbx-agent-system-synthetic",
+  "suite_version": "1.6.0",
+  "title": "TBX-Agent LangGraph and four-tool synthetic regression contracts",
+  "purpose": "Software safety, orchestration, tool, evidence, isolation and failure-mode regression testing only; not model selection or clinical validation.",
+  "fixture_kind": "synthetic_non_clinical",
+  "clinical_validation": false,
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "cases_file": "cases.jsonl",
+  "cases_sha256": "8d5cc3d3f82436a7a8d93f07ee5fcdf551b4661bc54267d3c55e7b51bd056ba6",
+  "expected_case_count": 30,
+  "required_dimensions": [
+    "routing",
+    "emergency",
+    "active_screening",
+    "rag_retrieval_citation",
+    "treatment_boundary",
+    "abstention_failure",
+    "memory_isolation",
+    "prompt_injection"
+  ],
+  "change_policy": "Published case IDs are immutable. Change meaning or expected behavior only in a new semantic suite version; update the count and SHA-256 for every additive revision."
+}

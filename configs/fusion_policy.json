@@ -1,0 +1,24 @@
+{
+  "schema_version": 5,
+  "policy_id": "rank03-user-trained-native-argmax-v2",
+  "purpose": "research_screening_support_only",
+  "classifier_policy_id": "three_class_native_argmax_v1",
+  "classifier_rule": "native_three_class_argmax",
+  "classifier_probability_order": ["healthy", "sick_non_tb", "tb"],
+  "tie_handling": "stable_native_argmax",
+  "classifier_routes": {
+    "healthy": "model_not_flagged",
+    "sick_non_tb": "non_tb_abnormal",
+    "tb": "model_flagged"
+  },
+  "detector_role": "advisory_localization_only",
+  "quality_warning": "retain_argmax_with_advisory",
+  "technical_failure": "technical_failure",
+  "selection_dataset": null,
+  "selection_metrics": null,
+  "heldout_metrics": null,
+  "hidden_or_locked_test_used": false,
+  "clinical_validation": false,
+  "performance_claims_inherited": false,
+  "warning": "The repository contains inference code only, with no model weights or clinical performance claim. Install the independently distributed, hash-verified inference bundle and validate its runtime identity before use."
+}

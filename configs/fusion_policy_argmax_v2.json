@@ -1,0 +1,26 @@
+{
+  "schema_version": 2,
+  "policy_id": "rank03-agent-screening-demo-cls-argmax-det-advisory-v2",
+  "purpose": "research_demo_screening_only",
+  "classifier_policy_id": "convnextT_three_class_argmax_v1",
+  "classifier_rule": "native_three_class_argmax",
+  "classifier_probability_order": ["healthy", "sick_non_tb", "tb"],
+  "tie_handling": "stable_native_argmax",
+  "classifier_routes": {
+    "healthy": "model_not_flagged",
+    "sick_non_tb": "non_tb_abnormal",
+    "tb": "model_flagged"
+  },
+  "classifier_sensitivity_on_selection_split": 0.975,
+  "classifier_specificity_on_selection_split": 0.999375,
+  "detector_role": "advisory_localization_only",
+  "quality_warning": "retain_argmax_with_advisory",
+  "technical_failure": "technical_failure",
+  "selection_dataset": "frozen official TBX11K validation, 1800 images",
+  "selection_split_sha256": "2cadd49c24d4b2b7f3bc4a40a498aa74582acb8efbce50758b106626db5601aa",
+  "analysis_report": "../reports/rank03_sensitivity_specificity_official_val_20260828.md",
+  "deployment_contract": "../reports/rank03_deployment_inference_contract_20260828.md",
+  "hidden_or_locked_test_used": false,
+  "clinical_validation": false,
+  "warning": "The native three-class argmax rule and detector advisory outputs were measured on the same internal validation split and require independent external validation before any real-world use."
+}

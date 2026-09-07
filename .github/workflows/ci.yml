@@ -1,0 +1,48 @@
+name: unit-ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lightweight-tests:
+    name: mock/unit (${{ matrix.os }}, Python 3.11)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      TBX_AGENT_VISION_BACKEND: mock
+      TBX_AGENT_NARRATOR_BACKEND: none
+      TBX_AGENT_REQUIRE_REAL_INFERENCE: "false"
+      TBX_AGENT_REQUIRE_LLM_INFERENCE: "false"
+      LLM_PROVIDER: none
+      TBX_AGENT_RETRIEVAL_CONFIG: configs/retrieval.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install lightweight test dependencies
+        run: python -m pip install -e ".[dev,ui,ingestion,dicom]"
+      - name: Lint
+        run: ruff check src ui tests scripts
+      - name: Parse POSIX launchers
+        if: runner.os == 'Linux'
+        run: sh -n scripts/bootstrap.sh scripts/run_local.sh scripts/build_llamacpp_linux.sh
+      - name: Read-only demo setup check
+        run: python scripts/check_setup.py --mode demo --json
+      - name: Unit and mock tests
+        run: pytest -m "not integration and not real_rank03 and not requires_model and not slow"
+      - name: Validate public source boundary
+        run: python scripts/build_source_release.py --dry-run
+
+# CI deliberately does not download BGE-M3, visual checkpoints, TBX11K, raw
+# guidelines, or call an LLM/API. Real-model integration commands are documented
+# in README and must be run explicitly in an operator-controlled environment.

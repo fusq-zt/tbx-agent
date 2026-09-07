@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "experiment_id": "tbx-core-guideline-seven-retrieval-v1",
+  "hypothesis": "The reviewed v6 corpus retrieves scoped evidence for the existing screening, diagnosis, and drug-susceptible treatment-education questions plus the separately authorized WHO care-setting question, while still abstaining for unsupported respiratory-protection guidance.",
+  "purpose": "versioned_engineering_retrieval_evaluation_not_clinical_validation",
+  "prohibited_uses": [
+    "clinical validation or clinical conclusions",
+    "use of a locked local test split or official hidden test set",
+    "silent corpus, chunk, split, or label regeneration",
+    "retriever or model selection using core_guideline_six_v1 or core_guideline_six_v2 results"
+  ],
+  "seed": 20260901,
+  "split_id": "fixed-reviewed-corpus-v1",
+  "suite_id": "tbx-core-guideline-seven",
+  "suite_version": "1.0.0",
+  "query_count": 7,
+  "answerable_query_count": 6,
+  "no_answer_query_count": 1,
+  "k_values": [1, 3, 5, 10],
+  "queries_path": "queries.jsonl",
+  "queries_sha256": "802740ebfd44f62a06e8aa8448ea5ab79361829f4d7d687759aa2ae0603f60b4",
+  "qrels_path": "qrels.jsonl",
+  "qrels_file_sha256": "31d667e02b12448c0b78021268dfb70ab4d4a540e14f2a530d79efa1d38c5eb5",
+  "knowledge_dir": "../../../knowledge",
+  "expected_snapshot_id": "tbx-guidelines-curated-2026-09-01-v6",
+  "expected_source_manifest_sha256": "56754bd4bba588fc7ad44aedbb30b2ae55859a656d99074ecd08744370319677",
+  "expected_chunks_sha256": "e8174b919853da6535cbcf447ece13a82c4796a7e8a6754691c32ab619cc0958",
+  "expected_corpus_generation_id": "sparse-50e838a056fb4cce191437f1",
+  "retrieval_config_path": "../../../configs/retrieval.yaml",
+  "retrieval_config_sha256": "534dbfebe4c81bab8bd6f9d93a97c036af909e84aab9f0f2373de54ea5c72e7e",
+  "metric_contract": {
+    "ranking_population": "answerable_queries_only",
+    "ranking_metrics": ["recall_at_1", "recall_at_3", "recall_at_5", "recall_at_10", "mrr_at_10", "ndcg_at_10"],
+    "no_answer_metric": "empty_successful_result_is_correct_abstention",
+    "retain_per_query_errors": true
+  }
+}

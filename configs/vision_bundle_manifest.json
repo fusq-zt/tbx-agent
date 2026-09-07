@@ -1,0 +1,78 @@
+{
+  "bundle_id": "tbx-rank03-inference-v1",
+  "bundle_type": "rank03-inference-v1",
+  "files": {
+    "classifier.pt": {
+      "sha256": "53080296cd970756c4f613b5fc9414f31ba7ac193345379aac94a836084d0891",
+      "size_bytes": 111358087
+    },
+    "classifier_config.json": {
+      "sha256": "0a0d8da93d1b4b8380ef6590359ff929073d756111b96c0a16885f5d0107f03a",
+      "size_bytes": 75
+    },
+    "detector.pt": {
+      "sha256": "41bd8cbf4fb670be73e8cb4a9a710e3f7c37fc47461afe74ab00bb1286ccc8cb",
+      "size_bytes": 125354717
+    },
+    "detector_config.json": {
+      "sha256": "3baba639c6ebf6a54cb58c0347ff2ee074fd98596568d55ee0a9e0ce5ba4de9f",
+      "size_bytes": 1464
+    }
+  },
+  "runtime": {
+    "classifier": {
+      "amp": true,
+      "architecture": "convnext_tiny.fb_in1k",
+      "checkpoint_path": "artifact://rank03/bundles/tbx-rank03-inference-v1/classifier.pt",
+      "checkpoint_sha256": "53080296cd970756c4f613b5fc9414f31ba7ac193345379aac94a836084d0891",
+      "config_path": "artifact://rank03/bundles/tbx-rank03-inference-v1/classifier_config.json",
+      "config_sha256": "0a0d8da93d1b4b8380ef6590359ff929073d756111b96c0a16885f5d0107f03a",
+      "input_size": 320,
+      "normalization_mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "normalization_std": [
+        0.229,
+        0.224,
+        0.225
+      ],
+      "probability_order": [
+        "healthy",
+        "sick_non_tb",
+        "tb"
+      ]
+    },
+    "detector": {
+      "architecture": "D-FINE-L HGNetv2-B4",
+      "base_config_path": "artifact://sources/D-FINE/configs/dfine/dfine_hgnetv2_l_coco.yml",
+      "bbox_format": "xyxy_original_image_pixels",
+      "checkpoint_path": "artifact://rank03/bundles/tbx-rank03-inference-v1/detector.pt",
+      "checkpoint_sha256": "41bd8cbf4fb670be73e8cb4a9a710e3f7c37fc47461afe74ab00bb1286ccc8cb",
+      "export_floor": 0.05,
+      "input_size": 512,
+      "native_label": 0,
+      "native_top_queries": 300,
+      "precision": "fp32",
+      "resolved_config_path": "artifact://rank03/bundles/tbx-rank03-inference-v1/detector_config.json",
+      "resolved_config_sha256": "3baba639c6ebf6a54cb58c0347ff2ee074fd98596568d55ee0a9e0ce5ba4de9f",
+      "source_root": "artifact://sources/D-FINE",
+      "tta": "none"
+    },
+    "model_bundle_id": "tbx-rank03-inference-v1",
+    "schema_version": 1,
+    "source_revision": "0f164cb87326dece76a48343a29edc5b94695b14+956d1709314c2c6a4df6f34de232054578a7449f",
+    "template": false,
+    "validation_scope": {
+      "clinical_validation": false,
+      "dataset": "TBX11K official Protocol A development validation (historical source weights; export checks tensor parity only)",
+      "development_split_sha256": "292ccde883efebc96b7dbab4c91b28deb92a463f702c3c63f65d2b5bb0216073",
+      "hidden_or_locked_test_used": false,
+      "images": 1800,
+      "performance_claims_inherited": false
+    },
+    "weights_distributed_by_repository": false
+  },
+  "schema_version": 1
+}

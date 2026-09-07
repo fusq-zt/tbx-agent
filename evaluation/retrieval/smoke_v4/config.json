@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "experiment_id": "tbx-rag-bm25-engineering-smoke-v4",
+  "hypothesis": "The versioned metadata-gated BM25 smoke contract remains executable after adding the separately scoped WHO care-setting handbook source, and retrieves the reviewed ambulatory, inpatient-indication, and medically safe transition clauses without borrowing regimen evidence.",
+  "purpose": "engineering_smoke_only",
+  "prohibited_uses": [
+    "clinical validation or clinical conclusions",
+    "retriever, model, threshold, chunking, fusion, or reranker selection",
+    "comparison with a locked local test split or official hidden test set",
+    "reuse of smoke_v1, smoke_v2, or smoke_v3 results as selection evidence for this corpus generation"
+  ],
+  "seed": 20260901,
+  "split_id": "fixed-engineering-smoke-v4",
+  "suite_id": "tbx-rag-engineering-smoke",
+  "suite_version": "4.0.0",
+  "k": 5,
+  "queries_path": "queries.jsonl",
+  "queries_sha256": "2255d3c62b15ce8590acc8daf1a2077559912dc408479a1f50a0c0b60e75b481",
+  "qrels_path": "qrels.jsonl",
+  "qrels_file_sha256": "2c562e0af741ac49ae304563921883165c1ca42dc105c2374886893338300c48",
+  "knowledge_dir": "../../../knowledge",
+  "expected_snapshot_id": "tbx-guidelines-curated-2026-09-01-v6",
+  "expected_source_manifest_sha256": "56754bd4bba588fc7ad44aedbb30b2ae55859a656d99074ecd08744370319677",
+  "expected_chunks_sha256": "e8174b919853da6535cbcf447ece13a82c4796a7e8a6754691c32ab619cc0958",
+  "expected_corpus_generation_id": "sparse-50e838a056fb4cce191437f1",
+  "retrieval_config_path": "../../../configs/retrieval.yaml",
+  "retrieval_config_sha256": "534dbfebe4c81bab8bd6f9d93a97c036af909e84aab9f0f2373de54ea5c72e7e",
+  "backend_contract": {
+    "backend": "deterministic_bm25",
+    "retrieval_version": "tbx-retrieval-v1",
+    "dense_enabled": false,
+    "reranker_enabled": false
+  },
+  "regression_policy": {
+    "paired_same_suite_and_corpus_generation_only": true,
+    "maximum_absolute_metric_drop": 0.0
+  }
+}

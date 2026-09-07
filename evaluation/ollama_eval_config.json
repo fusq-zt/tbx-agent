@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "evaluation_id": "agent-local-ollama-narration-v1",
+  "hypothesis": "With deterministic routing, retrieval, safety verification, and synthetic cases held fixed, enabling the restricted local Ollama narrator changes style only, applies to every eligible non-emergency response, and preserves all safety metrics.",
+  "seed": 20260828,
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "major_variables_changed": [
+    "narrator_backend"
+  ],
+  "narrator": {
+    "backend": "ollama",
+    "model": "gemma4:latest",
+    "model_digest": "c6eb396dbd5992bbe3f5cdb947e8bbc0ee413d7c17e2beaae69f5d569cf982eb"
+  },
+  "metrics": [
+    "route_accuracy",
+    "emergency_recall",
+    "citation_coverage_for_guideline_answers",
+    "forbidden_output_rate",
+    "narration_applied_rate",
+    "narration_fallback_rate",
+    "narration_safety_rejection_rate"
+  ]
+}

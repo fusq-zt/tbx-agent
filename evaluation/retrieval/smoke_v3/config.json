@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "experiment_id": "tbx-rag-bm25-engineering-smoke-v3",
+  "hypothesis": "The versioned metadata-gated BM25 smoke contract remains executable after adding the reviewed WHO Module 4 treatment source, while the treatment-product boundary rejects generic regimen evidence for a request to self-prescribe or change treatment.",
+  "purpose": "engineering_smoke_only",
+  "prohibited_uses": [
+    "clinical validation or clinical conclusions",
+    "retriever, model, threshold, chunking, fusion, or reranker selection",
+    "comparison with a locked local test split or official hidden test set",
+    "reuse of smoke_v1 or smoke_v2 results as selection evidence for this corpus generation"
+  ],
+  "seed": 20260831,
+  "split_id": "fixed-engineering-smoke-v3",
+  "suite_id": "tbx-rag-engineering-smoke",
+  "suite_version": "3.0.0",
+  "k": 5,
+  "queries_path": "queries.jsonl",
+  "queries_sha256": "b06723c1a1245b31941897015ef5d1efb1b6117513c5c7d15197b1bdf10c27dc",
+  "qrels_path": "qrels.jsonl",
+  "qrels_file_sha256": "2938f18d1689151fb266187682e1d969949453a0fb724c21d00ddf9722a325ea",
+  "knowledge_dir": "../../../knowledge",
+  "expected_snapshot_id": "tbx-guidelines-curated-2026-08-31-v5",
+  "expected_source_manifest_sha256": "ab8cdf2337e58cd95709778040a04bb73a26b3628330b4ff76a4debd869966b1",
+  "expected_chunks_sha256": "587c7420bb36a6675eaf56c86ab4472147fdf2e143367e43c3bd570aca4ce6cf",
+  "expected_corpus_generation_id": "sparse-bec62a771b4fc4c318fc98d6",
+  "retrieval_config_path": "../../../configs/retrieval.yaml",
+  "retrieval_config_sha256": "534dbfebe4c81bab8bd6f9d93a97c036af909e84aab9f0f2373de54ea5c72e7e",
+  "backend_contract": {
+    "backend": "deterministic_bm25",
+    "retrieval_version": "tbx-retrieval-v1",
+    "dense_enabled": false,
+    "reranker_enabled": false
+  },
+  "regression_policy": {
+    "paired_same_suite_and_corpus_generation_only": true,
+    "maximum_absolute_metric_drop": 0.0
+  }
+}

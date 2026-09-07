@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "experiment_id": "tbx-cdc-supplemental-retrieval-v1",
+  "hypothesis": "The reviewed v6 corpus retrieves the exact CDC supplemental chunk for each previously observed entity-level diagnostic, special-population, exposure, adherence, adverse-event, infectiousness, and return-to-activities gap without substituting a different test or population.",
+  "purpose": "versioned_engineering_retrieval_evaluation_not_clinical_validation",
+  "prohibited_uses": [
+    "clinical validation or clinical conclusions",
+    "use of a locked local test split or official hidden test set",
+    "silent corpus, chunk, split, or label regeneration",
+    "retriever, model, threshold, chunking, fusion, or reranker selection",
+    "treating US supplemental evidence as a replacement for China or WHO guidance"
+  ],
+  "seed": 20260901,
+  "split_id": "fixed-cdc-supplemental-v1",
+  "suite_id": "tbx-cdc-supplemental",
+  "suite_version": "1.0.0",
+  "query_count": 19,
+  "answerable_query_count": 19,
+  "no_answer_query_count": 0,
+  "k_values": [1, 3, 5, 10],
+  "queries_path": "queries.jsonl",
+  "queries_sha256": "cd8da0b0c72030d209da8836f2e1ddcd27e0bdf5cd59db57ddca6c6671b87c74",
+  "qrels_path": "qrels.jsonl",
+  "qrels_file_sha256": "d5d6934b8d820852f03d5e6fb2c2f4831915c09dfb1ea8261b67a1c5a6c01413",
+  "knowledge_dir": "../../../knowledge",
+  "expected_snapshot_id": "tbx-guidelines-curated-2026-09-01-v6",
+  "expected_source_manifest_sha256": "56754bd4bba588fc7ad44aedbb30b2ae55859a656d99074ecd08744370319677",
+  "expected_chunks_sha256": "e8174b919853da6535cbcf447ece13a82c4796a7e8a6754691c32ab619cc0958",
+  "expected_corpus_generation_id": "sparse-50e838a056fb4cce191437f1",
+  "retrieval_config_path": "../../../configs/retrieval.yaml",
+  "retrieval_config_sha256": "534dbfebe4c81bab8bd6f9d93a97c036af909e84aab9f0f2373de54ea5c72e7e",
+  "metric_contract": {
+    "ranking_population": "answerable_queries_only",
+    "ranking_metrics": ["recall_at_1", "recall_at_3", "recall_at_5", "recall_at_10", "mrr_at_10", "ndcg_at_10"],
+    "retain_per_query_errors": true
+  }
+}

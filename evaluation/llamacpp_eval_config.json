@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "evaluation_id": "agent-local-qwen35-4b-q4-k-m-llamacpp-narration-v2",
+  "hypothesis": "With deterministic routing, retrieval, and safety verification held fixed, a pinned local Qwen3.5-4B Q4_K_M narrator plus an exact per-response enum grammar applies only an allowed display prefix and preserves every safety metric.",
+  "seed": 20260829,
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "clinical_validation": false,
+  "major_variables_changed": [
+    "narrator_backend",
+    "exact_narration_enum_schema"
+  ],
+  "narrator": {
+    "backend": "llama_cpp",
+    "runtime_config": "configs/llm_runtime.yaml",
+    "runtime_config_sha256": "5984e831e607c54da63ef84133532ac1bbe0308a7086afd11c8a36f6fada1666"
+  },
+  "metrics": [
+    "route_accuracy",
+    "emergency_recall",
+    "citation_coverage_for_guideline_answers",
+    "forbidden_output_rate",
+    "narration_applied_rate",
+    "narration_fallback_rate",
+    "narration_safety_rejection_rate"
+  ]
+}

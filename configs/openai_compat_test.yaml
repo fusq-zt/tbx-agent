@@ -1,0 +1,144 @@
+# Historical Qwen protocol-smoke receipt. The active MedGemma runtime must be
+# re-evaluated before this release gate can pass; do not relabel the old result.
+schema_version: 1
+contract_id: qwen35-4b-q4-k-m-llamacpp-openai-protocol-test-v1
+status: protocol_test_only
+source_runtime_config: configs/llm_runtime.yaml
+
+governance:
+  selection_use: false
+  locked_or_hidden_test_used: false
+  clinical_validation: false
+  clinical_authority: false
+  agent_output: false
+  intended_use: loopback_raw_model_protocol_testing_with_bearer_protected_generation
+  prohibited_claims:
+    - tbx_agent_response
+    - diagnosis_or_exclusion
+    - treatment_recommendation
+    - clinical_validation
+
+transport:
+  implementation: native_llama_server
+  listen_origin: http://127.0.0.1:11435
+  api_prefix: /v1
+  openai_base_url: http://127.0.0.1:11435/v1
+  loopback_only: true
+  public_network_exposure_allowed: false
+  tls_terminated_here: false
+  remote_access:
+    allowed_without_gateway: false
+    gateway_required: true
+    gateway_implemented: false
+    gateway_tls_required: true
+    gateway_authentication: independent_bearer_token
+    internal_llama_key_reuse_allowed: false
+
+authentication:
+  behavior: endpoint_specific_native_llama_server_b10517
+  models_endpoint:
+    scheme: none
+    native_public_endpoint: true
+    fake_bearer_observed_http_status: 200
+    must_not_be_used_as_authentication_probe: true
+    risk_mitigation: loopback_only
+  generation_endpoint:
+    scheme: bearer
+    invalid_bearer_observed_http_status: 401
+    credential_purpose: internal_llama_server_loopback_only
+  acl_key_file_environment_variable: LLAMA_CPP_API_KEY_FILE
+  one_process_override_environment_variable: LLAMA_CPP_API_KEY
+  key_value_in_config_allowed: false
+  key_value_in_logs_allowed: false
+  key_value_in_command_line_allowed: false
+  key_value_in_source_control_allowed: false
+
+model:
+  public_alias: tbx-qwen3.5-4b-q4-k-m
+  upstream_alias: tbx-qwen3.5-4b-q4-k-m
+  model_sha256: 7f7e604801ab2997fffb9852d3602429e7b99eb79f778185efde4448c59da6de
+  engine: llama.cpp
+  server_build: b10517
+  modality: text_only
+  thinking: false
+  clinical_authority: false
+
+protocol:
+  dialect: openai_chat_completions
+  endpoints:
+    models:
+      method: GET
+      path: /v1/models
+      authentication: native_public_no_bearer_enforcement
+    chat_completions:
+      method: POST
+      path: /v1/chat/completions
+      authentication: bearer_required
+      synchronous_json: true
+      streaming_sse: true
+      terminal_sse_marker: '[DONE]'
+  supported_message_roles:
+    - system
+    - user
+    - assistant
+  message_content: plain_text_only
+  generation:
+    temperature: 0
+    enable_thinking: false
+    maximum_input_tokens: 4096
+    maximum_output_tokens: 512
+    parallel_slots: 1
+  unsupported_capabilities:
+    - agent_tools
+    - function_calling
+    - image_or_multimodal_input
+    - embeddings
+    - files
+    - audio
+    - openai_responses_api
+
+separation_boundary:
+  tbx_agent_api_base_url: http://127.0.0.1:8000
+  raw_model_api_base_url: http://127.0.0.1:11435/v1
+  raw_output_enters_agent_memory: false
+  raw_output_enters_case_or_report: false
+  raw_output_passes_agent_safety_verifier: false
+  warning: >-
+    This surface exposes raw local model protocol behavior on loopback. Native llama-server b10517
+    does not enforce Bearer authentication on model listing; generation requires Bearer authentication.
+    It is not a TBX-Agent response and must not be presented as screening, diagnosis, exclusion,
+    treatment, or clinical guidance. The models endpoint must not be used as an authentication probe.
+
+live_smoke:
+  command: python scripts/test_openai_compatible_api.py --runtime-config configs/llm_runtime.yaml
+  evidence_status: passed_engineering_protocol_smoke_with_failed_attempt_retained
+  publication_or_release_evidence: false
+  clinical_validation: false
+  seed: 20260829
+  split_hash: null
+  source_revision: 2e5a7cddfc800eb7136ab8531dec1e9bf010c791
+  source_tree_sha256: 7981b6bbecaaf04e1d4f05ee44ae76292b0426cdfa0f19718f3fa432a7996e95
+  runtime_config_file_sha256: ab65a9d7073076b82aca62d1fd5647cfe8ab79d60e1a588878e622802e354332
+  runtime_config_canonical_sha256: c563d80357091cf42a6081e0987f40e89d1d689d4bcf620e27ea5926cf95f898
+  sdk:
+    version: 2.54.0
+    max_retries: 0
+    http_client_trust_env: false
+    http_client_follow_redirects: false
+  passed_result:
+    path: runtime://evaluation_runs/openai-compat/20260828T213600878014Z/result.json
+    sha256: 930bdcaf70f4c2568d6eca713961311b8b9381dde281578186c693edadfd12b5
+    status: passed_openai_compat_smoke
+    total_milliseconds: 1196.5171999909217
+    models_list_success: true
+    chat_sync_success: true
+    chat_stream_success: true
+    stream_terminal_usage_observed: true
+    peak_vram_bytes: null
+    peak_vram_measurement: unavailable_not_measured_existing_server_protocol_compatibility_smoke
+  retained_failed_result:
+    path: runtime://evaluation_runs/openai-compat/20260828T213452999538Z/result.json
+    sha256: af27a29829891d7e516eba6d83be15404e70f94a7cdbf0a72f6132d90cc9cf23
+    status: failed_retained
+    failure_stage: load_acl_key
+    failure_type: PermissionError

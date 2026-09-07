@@ -1,0 +1,48 @@
+schema_version: 1
+runtime_id: medgemma15-4b-it-q4-k-m-llamacpp-b10517-v1
+engine: llama.cpp
+server_build: b10517
+release_archive_sha256: cbfac1e655d550df2515bac060b6410f9ed6aabc7df014353481608ac514b6dd
+binary_path: runtime://llama.cpp/b10517/bin/llama-server.exe
+binary_sha256: 5dd2e389a320e144c60873bbcb1036920d200f07e29c6f70deb5cd8e8df09781
+bundle_manifest_path: runtime://provenance/llama-b10517-bundle.json
+bundle_manifest_sha256: e91091c66cc1d2bb2238f3978ba191c38f12a7313628ba2d1f495bb91c42ca94
+api_key_file: runtime://secrets/llama-server-api.keys
+model_id: unsloth/medgemma-1.5-4b-it-GGUF@3855f948626b7ae42bccd082757f15078c53e758
+model_alias: tbx-medgemma-1.5-4b-it-q4-k-m
+model_path: artifact://llm/medgemma-1.5-4b-it-Q4_K_M.gguf
+model_sha256: b31becdf4f39561800505514cce67681604fe449d04dd35c8c92fd7848c6d7bd
+quantization: Q4_K_M
+host: 127.0.0.1
+port: 11435
+context_tokens: 8192
+parallel_slots: 1
+batch_tokens: 512
+micro_batch_tokens: 128
+generation_threads: 8
+batch_threads: 12
+gpu_layers: auto
+fit_target_mib: 4096
+fit_context_tokens: 8192
+cache_ram_mib: 256
+kv_cache_type: q8_0
+flash_attention: true
+continuous_batching: false
+jinja: true
+enable_thinking: false
+reasoning: 'off'
+metrics: true
+web_ui: false
+expose_slots: false
+cors_origins: localhost
+request_timeout_seconds: 120
+max_input_tokens: 4096
+max_output_tokens: 512
+seed: 20260829
+allowed_roles:
+  - narrator
+  - evidence_composer
+clinical_authority: false
+# CXR pixels are processed by the dedicated TBX vision/anatomy workers.  Do not
+# load a MedGemma projector into this text reasoning service.
+load_mmproj: false

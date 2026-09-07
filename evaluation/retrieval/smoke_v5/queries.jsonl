@@ -1,0 +1,31 @@
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.symptoms.001","text":"肺结核可疑症状 咳嗽咳痰两周 咯血 盗汗 体重减轻"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.imaging-boundary.001","text":"胸部影像异常能不能单独确诊肺结核 还需病原学检查"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.cxr-referral.001","text":"主动筛查胸部X线异常疑似肺结核应该转诊到哪里进一步检查"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.tst-igra-boundary.001","text":"结核菌素皮肤试验 TST 或 IGRA 能否诊断活动性肺结核"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.negative-test-boundary.001","text":"痰涂片阴性或核酸检测阴性能不能排除肺结核"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.reporting-referral.001","text":"非结核病定点医疗机构发现肺结核患者如何报告转诊登记"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.treatment-product-boundary.001","text":"能否根据这次筛查结果自行停药换药或给出个人抗结核处方"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.high-risk-groups.001","text":"哪些人属于肺结核主动筛查高风险人群 HIV 密切接触 TNF抑制剂 器官移植"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.key-groups.001","text":"老年人 糖尿病 既往结核病和人员密集机构是否属于主动筛查重点人群"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.under15-initial.001","text":"15岁以下儿童有肺结核可疑症状时初始病原学检查优先选择什么"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.under15-no-sputum.001","text":"15岁以下儿童有症状但无法获得合格痰标本可以考虑什么标本做NAAT"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.15plus-initial.001","text":"15岁及以上有肺结核可疑症状应做胸部X线还是痰NAAT"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.15plus-no-sputum.001","text":"成人疑似肺结核没有痰或痰标本不合格能否使用舌拭子NAAT"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.cxr-unsuitable.001","text":"孕妇等不适合胸部X线检查的人群主动筛查时优先做什么"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.highrisk-under15.001","text":"除HIV外15岁以下结核高风险儿童主动筛查采用症状还是病原学检查"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.highrisk-15plus.001","text":"除HIV外15岁以上结核高风险人群应同时筛查哪些项目"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.school-initial.001","text":"学校学生肺结核初筛包含症状 密切接触史和结核感染免疫学检查吗"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.school-followup.001","text":"学校肺结核初筛任一项目阳性后不同年龄学生下一步检查是什么"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.key-group-path.001","text":"老年人 糖尿病和既往结核患者的主动筛查路径如何安排"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.high-incidence-path.001","text":"肺结核高发地区社区人群如何按症状 胸片 痰NAAT分步筛查"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.cad-assistance.001","text":"肺结核高发地区胸部X线主动筛查能否使用计算机辅助检测技术"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.naat-positive-context.001","text":"主动筛查NAAT阳性是否需要考虑既往治疗残留DNA或采样核酸污染"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.ltbi-followup.001","text":"免疫学检测阳性但排除活动性结核后应如何继续评估管理"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.rif-resistance.001","text":"病原学确认结核病后利福平耐药初始检测推荐使用什么"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.inh-fq-resistance.001","text":"确诊肺结核后异烟肼和氟喹诺酮耐药初始检测可选择什么"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.child-concurrent-samples.001","text":"儿童有肺结核症状或筛查阳性时呼吸道和粪便标本NAAT如何使用"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.hiv-lflam.001","text":"HIV感染成人疑似结核时呼吸道NAAT和尿LF-LAM是否应并行"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.imaging-differential.001","text":"肺结核样胸片影像还可能与肿瘤 结节病 尘肺 肺炎或真菌感染重叠吗"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.emergency-handoff.001","text":"出现急症分诊信号后系统应继续常规结核筛查还是转入急症升级"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.screening-only.001","text":"胸片AI辅助筛查结果能否判断活动性 传染性 耐药或直接确诊排除肺结核"}
+{"schema_version":1,"suite_id":"tbx-rag-engineering-smoke","suite_version":"5.0.0","split_id":"fixed-engineering-smoke-v4","query_id":"smoke.care-setting.001","text":"肺结核治疗是否都必须住院，哪些情况可门诊或社区照护"}

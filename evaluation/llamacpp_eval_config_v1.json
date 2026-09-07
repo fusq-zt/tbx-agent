@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "evaluation_id": "agent-local-qwen35-4b-q4-k-m-llamacpp-narration-v1",
+  "hypothesis": "With deterministic routing, retrieval, safety verification, and synthetic cases held fixed, enabling the pinned local Qwen3.5-4B Q4_K_M narrator through direct llama.cpp changes only the permitted display prefix and preserves every safety metric.",
+  "seed": 20260829,
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "major_variables_changed": [
+    "narrator_backend"
+  ],
+  "narrator": {
+    "backend": "llama_cpp",
+    "runtime_config": "configs/llm_runtime.yaml",
+    "runtime_config_sha256": "ab65a9d7073076b82aca62d1fd5647cfe8ab79d60e1a588878e622802e354332"
+  },
+  "metrics": [
+    "route_accuracy",
+    "emergency_recall",
+    "citation_coverage_for_guideline_answers",
+    "forbidden_output_rate",
+    "narration_applied_rate",
+    "narration_fallback_rate",
+    "narration_safety_rejection_rate"
+  ]
+}

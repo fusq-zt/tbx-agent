@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "experiment_id": "tbx-core-guideline-six-retrieval-v2",
+  "hypothesis": "The reviewed v5 corpus retrieves scoped evidence for the three established screening and diagnosis questions plus the two newly supported WHO treatment-education questions, while still abstaining for unsupported respiratory-protection guidance.",
+  "purpose": "versioned_engineering_retrieval_evaluation_not_clinical_validation",
+  "prohibited_uses": [
+    "clinical validation or clinical conclusions",
+    "use of a locked local test split or official hidden test set",
+    "silent corpus, chunk, split, or label regeneration",
+    "retriever or model selection using core_guideline_six_v1 results"
+  ],
+  "seed": 20260831,
+  "split_id": "fixed-reviewed-corpus-v2",
+  "suite_id": "tbx-core-guideline-six",
+  "suite_version": "2.0.0",
+  "query_count": 6,
+  "answerable_query_count": 5,
+  "no_answer_query_count": 1,
+  "k_values": [1, 3, 5, 10],
+  "queries_path": "queries.jsonl",
+  "queries_sha256": "44ca679d93bcf1e93d21af02563792744d2fad7410f95117f4544bdbc77379de",
+  "qrels_path": "qrels.jsonl",
+  "qrels_file_sha256": "12bc0cef31b2cf899359ca4c9d26536a11a925478f54870258c84c49fadf875e",
+  "knowledge_dir": "../../../knowledge",
+  "expected_snapshot_id": "tbx-guidelines-curated-2026-08-31-v5",
+  "expected_source_manifest_sha256": "ab8cdf2337e58cd95709778040a04bb73a26b3628330b4ff76a4debd869966b1",
+  "expected_chunks_sha256": "587c7420bb36a6675eaf56c86ab4472147fdf2e143367e43c3bd570aca4ce6cf",
+  "expected_corpus_generation_id": "sparse-bec62a771b4fc4c318fc98d6",
+  "retrieval_config_path": "../../../configs/retrieval.yaml",
+  "retrieval_config_sha256": "534dbfebe4c81bab8bd6f9d93a97c036af909e84aab9f0f2373de54ea5c72e7e",
+  "metric_contract": {
+    "ranking_population": "answerable_queries_only",
+    "ranking_metrics": ["recall_at_1", "recall_at_3", "recall_at_5", "recall_at_10", "mrr_at_10", "ndcg_at_10"],
+    "no_answer_metric": "empty_successful_result_is_correct_abstention",
+    "retain_per_query_errors": true
+  }
+}

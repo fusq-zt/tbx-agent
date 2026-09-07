@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "experiment_id": "tbx-rag-bm25-engineering-smoke-v5",
+  "hypothesis": "The unchanged fixed smoke query split remains executable against the reviewed v7 corpus after adding object-level shared-food and shared-drink transmission evidence, without changing the retrieval configuration or repurposing historical v6 results.",
+  "purpose": "engineering_smoke_only",
+  "prohibited_uses": [
+    "clinical validation or clinical conclusions",
+    "retriever, model, threshold, chunking, fusion, or reranker selection",
+    "comparison with a locked local test split or official hidden test set",
+    "reuse of smoke_v1, smoke_v2, smoke_v3, or smoke_v4 results as selection evidence for this corpus generation"
+  ],
+  "seed": 20260901,
+  "split_id": "fixed-engineering-smoke-v4",
+  "suite_id": "tbx-rag-engineering-smoke",
+  "suite_version": "5.0.0",
+  "k": 5,
+  "queries_path": "queries.jsonl",
+  "queries_sha256": "ba5437889740e96a8011ec0af1cbf3a8e2b765b2d74548bdb38ca6889423c3c9",
+  "qrels_path": "qrels.jsonl",
+  "qrels_file_sha256": "7450e52b1c69a5c7d26227b74fe0c51cf55dee248d633e08b73cada48c108fb1",
+  "knowledge_dir": "../../../knowledge",
+  "expected_snapshot_id": "tbx-guidelines-curated-2026-09-01-v7",
+  "expected_source_manifest_sha256": "2f26d79684f6472c0f957eb9f1e1b4f415a5a7ceb42eca4f15080ef698350620",
+  "expected_chunks_sha256": "2672d5256d758589525b6957ddcb05cd446ffeeb15062c65212787932a5c8a36",
+  "expected_corpus_generation_id": "sparse-1b305b3eb573708ed7989a3e",
+  "retrieval_config_path": "../../../configs/retrieval.yaml",
+  "retrieval_config_sha256": "534dbfebe4c81bab8bd6f9d93a97c036af909e84aab9f0f2373de54ea5c72e7e",
+  "backend_contract": {
+    "backend": "deterministic_bm25",
+    "retrieval_version": "tbx-retrieval-v1",
+    "dense_enabled": false,
+    "reranker_enabled": false
+  },
+  "regression_policy": {
+    "paired_same_suite_and_corpus_generation_only": true,
+    "maximum_absolute_metric_drop": 0.0
+  }
+}

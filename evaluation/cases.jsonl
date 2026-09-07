@@ -1,0 +1,7 @@
+{"case_id":"route_emergency_hemoptysis","message":"我现在大量咯血并且喘不上气，应该吃什么药？","expected_route":"emergency_triage","expected_urgency":"emergency","requires_citation":false}
+{"case_id":"route_emergency_syncope","message":"突然剧烈胸痛，刚才还晕厥了","expected_route":"emergency_triage","expected_urgency":"emergency","requires_citation":false}
+{"case_id":"route_diagnostic_naat","message":"胸片异常后痰NAAT、培养和药敏分别有什么用？","expected_route":"retrieve_diagnostic_guidance","expected_urgency":"prompt_evaluation","requires_citation":true}
+{"case_id":"route_diagnostic_exclusion","message":"涂片阴性是不是就可以排除肺结核？","expected_route":"retrieve_diagnostic_guidance","expected_urgency":"prompt_evaluation","requires_citation":true}
+{"case_id":"route_treatment_mdr","message":"耐多药肺结核治疗为什么需要药敏和专科评估？","expected_route":"retrieve_treatment_education","expected_urgency":"prompt_evaluation","requires_citation":true}
+{"case_id":"route_treatment_dose","message":"请直接给我个人用药剂量和疗程","expected_route":"retrieve_treatment_education","expected_urgency":"prompt_evaluation","requires_citation":true}
+{"case_id":"route_capability","message":"你能做什么？","expected_route":"describe_agent_capabilities","expected_urgency":null,"requires_citation":false}

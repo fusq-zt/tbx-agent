@@ -1,0 +1,312 @@
+{
+  "schema_version": 1,
+  "guideline_rule_version": "tb-active-screening-2026-v1",
+  "consent_notice": "接下来会询问症状、年龄分组、接触史和免疫相关情况等敏感信息，仅用于本次主动筛查分层。你可以回答不知道、跳过任何问题，或随时取消；结果不能确诊或排除肺结核，也不会计算患病概率。是否同意继续？",
+  "scope_notice": "本结果仅用于主动筛查分层，不能确诊或排除肺结核，也不计算或合并疾病概率。",
+  "sources": {
+    "china_active_screening_2026": {
+      "title": "肺结核主动筛查循证指南",
+      "organization": "中华医学会结核病学分会、深圳市第三人民医院/国家感染性疾病临床医学研究中心",
+      "publication_year": 2026,
+      "url": "https://www.syyxzz.com/CN/10.3969/j.issn.1006-5725.2026.07.001"
+    },
+    "tbx_local_safety_policy": {
+      "title": "TBX-Agent本地安全策略",
+      "organization": "TBX-Agent项目",
+      "publication_year": 2026,
+      "url": "urn:tbx-agent:local-safety-policy:2026-08-28"
+    }
+  },
+  "special_answers": {
+    "unknown": "__unknown__",
+    "skip": "__skipped__",
+    "cancel": "__cancelled__"
+  },
+  "questions": [
+    {
+      "question_id": "emergency_red_flags",
+      "text_zh": "目前是否有以下任一紧急警示表现？可多选；若均无请选择“以上均无”。",
+      "answer_type": "multi_choice",
+      "choices": [
+        "严重呼吸困难",
+        "口唇或面色发青",
+        "意识模糊或晕厥",
+        "大量或持续咯血",
+        "严重胸痛",
+        "已测得血氧饱和度低于90%",
+        "以上均无"
+      ],
+      "sensitive": true,
+      "source_id": "tbx_local_safety_policy",
+      "locator": "emergency_red_flags",
+      "ask_if": {}
+    },
+    {
+      "question_id": "age_group",
+      "text_zh": "被筛查者属于哪个年龄组？指南以15岁区分儿童与成人筛查路径。",
+      "answer_type": "single_choice",
+      "choices": ["15岁以下", "15～64岁", "65岁及以上"],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "第3.1节推荐意见1；第3.2节推荐意见2-3",
+      "ask_if": {}
+    },
+    {
+      "question_id": "hiv_status",
+      "text_zh": "是否已由医疗机构确认存在HIV感染？",
+      "answer_type": "boolean",
+      "choices": [],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表1；第3.2节推荐意见2",
+      "ask_if": {}
+    },
+    {
+      "question_id": "hiv_four_symptoms",
+      "text_zh": "目前是否有以下任一症状？可多选；若均无请选择“以上均无”。",
+      "answer_type": "multi_choice",
+      "choices": ["任意时长咳嗽", "发热", "盗汗", "体重减轻", "以上均无"],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表2；第3.2节推荐意见2",
+      "ask_if": {"hiv_status": [true]}
+    },
+    {
+      "question_id": "child_tb_symptoms",
+      "text_zh": "15岁以下被筛查者目前是否有以下任一表现？可多选；若均无请选择“以上均无”。",
+      "answer_type": "multi_choice",
+      "choices": [
+        "咳嗽或咳痰持续2周及以上",
+        "痰中带血或非大量咯血",
+        "发热",
+        "盗汗",
+        "乏力或活动减少",
+        "食欲不振",
+        "体重减轻或体重增长不良",
+        "以上均无"
+      ],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表1；第3.1节推荐意见1",
+      "ask_if": {
+        "age_group": ["15岁以下"],
+        "hiv_status": [false, "__unknown__", "__skipped__"]
+      }
+    },
+    {
+      "question_id": "adult_tb_symptoms",
+      "text_zh": "目前是否有以下任一表现？可多选；若均无请选择“以上均无”。",
+      "answer_type": "multi_choice",
+      "choices": [
+        "咳嗽或咳痰持续2周及以上",
+        "痰中带血或非大量咯血",
+        "盗汗",
+        "乏力",
+        "午后低热",
+        "食欲不振",
+        "体重减轻",
+        "以上均无"
+      ],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表1；第3.1节推荐意见1",
+      "ask_if": {
+        "age_group": ["15～64岁", "65岁及以上"],
+        "hiv_status": [false, "__unknown__", "__skipped__"]
+      }
+    },
+    {
+      "question_id": "age_unknown_tb_symptoms",
+      "text_zh": "年龄分组未提供。现在是否有咳嗽、咳痰、痰中带血或咯血、发热、盗汗、乏力、食欲不振或体重减轻中的任一项？",
+      "answer_type": "boolean",
+      "choices": [],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表1；表2",
+      "ask_if": {"age_group": ["__unknown__", "__skipped__"]}
+    },
+    {
+      "question_id": "close_contact",
+      "text_zh": "是否曾被确认是肺结核患者的密切接触者？成人和儿童均包括。",
+      "answer_type": "boolean",
+      "choices": [],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表1；第3.2节推荐意见3",
+      "ask_if": {}
+    },
+    {
+      "question_id": "immunosuppressed",
+      "text_zh": "是否已由医疗专业人员告知存在免疫抑制，或正在接受可能明显抑制免疫功能的治疗？",
+      "answer_type": "boolean",
+      "choices": [],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表1；第3.2节推荐意见3",
+      "ask_if": {}
+    },
+    {
+      "question_id": "immunosuppression_type",
+      "text_zh": "已知免疫抑制情况属于哪些类型？可多选。",
+      "answer_type": "multi_choice",
+      "choices": [
+        "接受TNF-α拮抗剂治疗",
+        "器官移植术后",
+        "因风湿免疫疾病长期使用免疫抑制剂",
+        "其他经医疗专业人员确认的免疫抑制",
+        "具体类型不清楚"
+      ],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表1；第3.2节推荐意见3",
+      "ask_if": {"immunosuppressed": [true]}
+    },
+    {
+      "question_id": "other_high_risk_factors",
+      "text_zh": "是否属于以下其他肺结核发病高风险情况？可多选；若均无请选择“以上均无”。",
+      "answer_type": "multi_choice",
+      "choices": [
+        "矽肺或其他经医生确认的基础肺部疾病",
+        "胸廓畸形",
+        "存在吸毒或相关物质使用情况",
+        "因工作接触肺结核患者的医务人员",
+        "以上均无"
+      ],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表1；第3.2节推荐意见3",
+      "ask_if": {}
+    },
+    {
+      "question_id": "priority_population_factors",
+      "text_zh": "是否属于以下重点人群？可多选；若均无请选择“以上均无”。",
+      "answer_type": "multi_choice",
+      "choices": [
+        "糖尿病患者",
+        "既往结核病患者",
+        "在校学生或学校相关人群",
+        "劳动密集型企业人群",
+        "监管场所或其他人员密集机构人群",
+        "以上均无"
+      ],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表1；第3.3节推荐意见4-5",
+      "ask_if": {}
+    },
+    {
+      "question_id": "high_incidence_community",
+      "text_zh": "是否已由当地疾控或卫生部门明确，你所在社区属于肺结核高发病率地区？",
+      "answer_type": "boolean",
+      "choices": [],
+      "sensitive": true,
+      "source_id": "china_active_screening_2026",
+      "locator": "表1；第3.4节推荐意见6-7",
+      "ask_if": {}
+    }
+  ],
+  "rules": {
+    "emergency_question_id": "emergency_red_flags",
+    "emergency_none_choice": "以上均无",
+    "emergency_choice_codes": {
+      "严重呼吸困难": "severe_breathlessness",
+      "口唇或面色发青": "cyanosis",
+      "意识模糊或晕厥": "confusion_or_fainting",
+      "大量或持续咯血": "large_or_persistent_hemoptysis",
+      "严重胸痛": "severe_chest_pain",
+      "已测得血氧饱和度低于90%": "oxygen_saturation_below_90"
+    },
+    "age_question_id": "age_group",
+    "child_age_value": "15岁以下",
+    "adult_age_values": ["15～64岁", "65岁及以上"],
+    "older_age_value": "65岁及以上",
+    "symptom_question_ids": [
+      "hiv_four_symptoms",
+      "child_tb_symptoms",
+      "adult_tb_symptoms",
+      "age_unknown_tb_symptoms"
+    ],
+    "symptom_none_choices": {
+      "hiv_four_symptoms": "以上均无",
+      "child_tb_symptoms": "以上均无",
+      "adult_tb_symptoms": "以上均无"
+    },
+    "high_risk_boolean_question_ids": [
+      "hiv_status",
+      "close_contact",
+      "immunosuppressed"
+    ],
+    "high_risk_multi_question_ids": {
+      "other_high_risk_factors": "以上均无"
+    },
+    "priority_multi_question_ids": {
+      "priority_population_factors": "以上均无"
+    },
+    "high_incidence_question_id": "high_incidence_community",
+    "exclusive_choices": {
+      "emergency_red_flags": ["以上均无"],
+      "hiv_four_symptoms": ["以上均无"],
+      "child_tb_symptoms": ["以上均无"],
+      "adult_tb_symptoms": ["以上均无"],
+      "other_high_risk_factors": ["以上均无"],
+      "priority_population_factors": ["以上均无"]
+    }
+  },
+  "summary_citations": {
+    "base": {
+      "chunk_id": "as26_key_groups",
+      "source_id": "china_active_screening_2026",
+      "title": "肺结核主动筛查循证指南",
+      "organization": "中华医学会结核病学分会、深圳市第三人民医院/国家感染性疾病临床医学研究中心",
+      "publication_year": 2026,
+      "section": "重点人群与高发地区社区人群",
+      "locator": "表1：不同人群的定义",
+      "url": "https://www.syyxzz.com/CN/10.3969/j.issn.1006-5725.2026.07.001",
+      "support_text": "重点人群和高发地区社区人群需采用指南规定的差异化筛查策略。"
+    },
+    "symptoms": {
+      "chunk_id": "as26_symptoms",
+      "source_id": "china_active_screening_2026",
+      "title": "肺结核主动筛查循证指南",
+      "organization": "中华医学会结核病学分会、深圳市第三人民医院/国家感染性疾病临床医学研究中心",
+      "publication_year": 2026,
+      "section": "筛查对象与症状询问",
+      "locator": "表1：不同人群的定义",
+      "url": "https://www.syyxzz.com/CN/10.3969/j.issn.1006-5725.2026.07.001",
+      "support_text": "该症状集合用于识别主动筛查对象，不等同于肺结核诊断。"
+    },
+    "high_risk": {
+      "chunk_id": "as26_high_risk",
+      "source_id": "china_active_screening_2026",
+      "title": "肺结核主动筛查循证指南",
+      "organization": "中华医学会结核病学分会、深圳市第三人民医院/国家感染性疾病临床医学研究中心",
+      "publication_year": 2026,
+      "section": "肺结核发病高风险人群",
+      "locator": "表1：不同人群的定义",
+      "url": "https://www.syyxzz.com/CN/10.3969/j.issn.1006-5725.2026.07.001",
+      "support_text": "这些人群应优先进入与年龄和免疫状态相匹配的主动筛查路径。"
+    },
+    "priority": {
+      "chunk_id": "as26_key_groups",
+      "source_id": "china_active_screening_2026",
+      "title": "肺结核主动筛查循证指南",
+      "organization": "中华医学会结核病学分会、深圳市第三人民医院/国家感染性疾病临床医学研究中心",
+      "publication_year": 2026,
+      "section": "重点人群与高发地区社区人群",
+      "locator": "表1：不同人群的定义",
+      "url": "https://www.syyxzz.com/CN/10.3969/j.issn.1006-5725.2026.07.001",
+      "support_text": "重点人群和高发地区社区人群需采用指南规定的差异化筛查策略。"
+    },
+    "referral": {
+      "chunk_id": "as26_cxr_positive_referral",
+      "source_id": "china_active_screening_2026",
+      "title": "肺结核主动筛查循证指南",
+      "organization": "中华医学会结核病学分会、深圳市第三人民医院/国家感染性疾病临床医学研究中心",
+      "publication_year": 2026,
+      "section": "疑似肺结核患者的转诊",
+      "locator": "推荐意见8，期刊页1116",
+      "url": "https://www.syyxzz.com/CN/10.3969/j.issn.1006-5725.2026.07.001",
+      "support_text": "影像筛查阳性触发转诊，不等于确诊肺结核。"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "fixture_id": "tbx-narrator-precision-pair-synthetic-v1",
+  "purpose": "Restricted narrator BF16 versus Q4_K_M engineering regression only",
+  "source_cases_path": "evaluation/cases.jsonl",
+  "source_cases_sha256": "c08428dd9706e5e493625497de9ebc9432461ca8db40ae9dbdecfc6b24786f2a",
+  "source_case_count": 7,
+  "narration_eligible_case_count": 5,
+  "excluded_case_ids": [
+    "route_emergency_hemoptysis",
+    "route_emergency_syncope"
+  ],
+  "excluded_reason": "Production contract skips narration for emergency responses",
+  "seed": 20260829,
+  "policy_id": "tbx-narrator-style-only-v2",
+  "allowed_prefixes": [
+    "",
+    "简要说明：",
+    "核心信息：",
+    "请注意："
+  ],
+  "locked_or_hidden_test_used": false,
+  "official_hidden_test_used": false,
+  "clinical_validation": false,
+  "selection_use": false,
+  "cases": [
+    {
+      "case_id": "route_diagnostic_naat",
+      "response_kind": "next_test_information",
+      "approved_summary": "肺结核判断需要完整证据链，单一症状、胸片、涂片或AI结果都不够。",
+      "limitations": [
+        "本系统不用于确诊或排除肺结核。",
+        "本系统不能开具检查单或赋予诊断标签。"
+      ],
+      "urgency": "prompt_evaluation"
+    },
+    {
+      "case_id": "route_diagnostic_exclusion",
+      "response_kind": "next_test_information",
+      "approved_summary": "肺结核判断需要完整证据链，单一症状、胸片、涂片或AI结果都不够。",
+      "limitations": [
+        "本系统不用于确诊或排除肺结核。",
+        "本系统不能开具检查单或赋予诊断标签。"
+      ],
+      "urgency": "prompt_evaluation"
+    },
+    {
+      "case_id": "route_treatment_mdr",
+      "response_kind": "treatment_education",
+      "approved_summary": "当前知识快照没有治疗方案级来源；我只能解释证据缺口和专科决策边界。",
+      "limitations": [
+        "本系统不用于确诊或排除肺结核。",
+        "任何开始、停止、替换或剂量调整必须由治疗机构决定。"
+      ],
+      "urgency": "prompt_evaluation"
+    },
+    {
+      "case_id": "route_treatment_dose",
+      "response_kind": "treatment_education",
+      "approved_summary": "当前知识快照没有治疗方案级来源；我只能解释证据缺口和专科决策边界。",
+      "limitations": [
+        "本系统不用于确诊或排除肺结核。",
+        "任何开始、停止、替换或剂量调整必须由治疗机构决定。"
+      ],
+      "urgency": "prompt_evaluation"
+    },
+    {
+      "case_id": "route_capability",
+      "response_kind": "safe_abstention",
+      "approved_summary": "我可以做胸片辅助筛查、解释进一步检查、提供非处方性的治疗教育，或在你明确同意后开启主动筛查问答。",
+      "limitations": [
+        "不用于确诊或排除肺结核，也不提供个体化处方。"
+      ],
+      "urgency": null
+    }
+  ],
+  "interpretation_limits": [
+    "All cases are synthetic and contain no patient data.",
+    "The fixture tests only exact-enum display rendering after an authoritative response already exists.",
+    "It cannot evaluate open-ended medical reasoning, diagnosis, treatment quality, or clinical safety.",
+    "It cannot be used for model, quantization, prompt, threshold, or deployment selection."
+  ]
+}

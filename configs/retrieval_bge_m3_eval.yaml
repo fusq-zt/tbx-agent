@@ -1,0 +1,52 @@
+schema_version: 1
+
+engine:
+  retrieval_version: tbx-retrieval-bge-m3-eval-v1
+  retrieval_mode: hybrid
+  candidate_limit: 40
+  sparse_minimum_score: 0.0
+  rrf_rank_constant: 60
+  sparse_weight: 1.0
+  dense_weight: 1.0
+  fallback_to_sparse: false
+  near_duplicate_threshold: 0.92
+  near_duplicates_across_sources: false
+  rerank_top_n: 20
+  reranker_required: false
+  require_verified_model_hashes: true
+
+dense:
+  enabled: true
+  adapter: bge_m3_local
+  endpoint: null
+  model_id: BAAI/bge-m3
+  # Clean 12-file runtime tree downloaded from the pinned revision below.
+  # Hugging Face local-dir metadata is stored outside this model directory.
+  model_sha256: f10be6efd18e59594f996527822b9c9928147775d748bc669e6589ee8a608420
+  revision: 5617a9f61b028005a4858fdac845db406aefb181
+  dimensions: 1024
+  normalized: true
+  timeout_seconds: 15.0
+  require_loopback: true
+  query_prefix: ""
+  document_prefix: ""
+  model_path_env: RAG_EMBEDDING_MODEL_PATH
+  cache_dir_env: RAG_EMBEDDING_CACHE_DIR
+  device_env: RAG_EMBEDDING_DEVICE
+
+vector_store:
+  backend: qdrant_local
+  qdrant_path: runtime://retrieval/qdrant_local_bge_m3_eval
+  sqlite_root: runtime://retrieval/sqlite_vec_bge_m3_eval
+  maximum_exact_candidates: 50000
+  qdrant_base_url: null
+  qdrant_collection: tbx-guidelines-bge-m3-eval
+
+reranker:
+  enabled: false
+  adapter: http
+  endpoint: http://127.0.0.1:7999/rerank
+  model_id: BAAI/bge-reranker-v2-m3
+  model_sha256: null
+  timeout_seconds: 20.0
+  require_loopback: true

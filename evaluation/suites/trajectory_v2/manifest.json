@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "suite_id": "tbx_agent_trajectory_runtime_v2",
+  "suite_version": "2.0.0",
+  "title": "TBX-Agent bounded controller runtime trajectories v2",
+  "fixture_kind": "synthetic_non_clinical",
+  "clinical_validation": false,
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "cases_file": "cases.jsonl",
+  "cases_sha256": "2bd5ebda77a0b291b639c707c69cbfbeab417cf6b3ffb7809cba6d3d6d6cd146",
+  "expected_case_count": 7
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "suite_id": "tbx_agent_trajectory_runtime_v3",
+  "suite_version": "3.2.0",
+  "title": "TBX-Agent Plan+ReAct controller runtime trajectories v3",
+  "fixture_kind": "synthetic_non_clinical",
+  "clinical_validation": false,
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "cases_file": "cases.jsonl",
+  "cases_sha256": "9997f134fe30efd87672b782d47bab7307121e8772b2a38e7b9e320e9e18030c",
+  "expected_case_count": 7
+}

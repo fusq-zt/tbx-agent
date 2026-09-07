@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "bundle_id": "tbx-rank03-inference-v1",
+  "filename": "tbx-rank03-inference-v1.zip",
+  "sha256": "0312172e649dffd774311db397066a916dc65845627aa1489049bfa36d971594",
+  "size_bytes": 219595278,
+  "download_url": null,
+  "publication_status": "pending",
+  "contents": [
+    "ConvNeXt-Tiny classifier inference state",
+    "D-FINE-L detector EMA inference state",
+    "inference configurations and manifest"
+  ],
+  "training_code_included": false
+}

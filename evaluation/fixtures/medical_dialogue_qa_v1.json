@@ -1,0 +1,904 @@
+{
+  "schema_version": 1,
+  "suite_id": "tbx-medical-dialogue-qa-v1",
+  "language": "zh-CN",
+  "clinical_validation": false,
+  "description": "医学对话 QA：验证 Plan+ReAct 高层工具选择、工具内指南解析、证据适用性与回答语义；不代表临床验证。",
+  "cases": [
+    {
+      "case_id": "infection-transmission-basic",
+      "category": "传播与防护",
+      "question": "结核病会传染吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "infection_control",
+        "subtopic": "infection_control",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["只有活动性结核病患者可能传播", "含菌气溶胶", "潜伏结核感染者"],
+        "answer_semantic_groups": [
+          {"id": "active-tb-can-transmit", "all_of": [["活动性肺结核", "活动性结核病", "活动性肺结核或喉结核"], ["传播", "传染"]]},
+          {"id": "airborne-route", "all_of": [["气溶胶", "飞沫核", "空气传播"], ["含菌", "结核菌"]]},
+          {"id": "latent-infection-not-contagious", "all_of": [["潜伏结核感染者", "潜伏感染"], ["不会传播", "不会传染", "不具传染性", "不能传染"]]}
+        ],
+        "forbidden_contains": ["活动性肺结核不会传染", "活动性结核病不会传染", "通常不被认为是传染病", "已经确诊"],
+        "required_chunk_ids": ["cdc24_only_active_spreads"]
+      }
+    },
+    {
+      "case_id": "infection-mask-suspected",
+      "category": "传播与防护",
+      "question": "怀疑肺结核时需要戴口罩吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "infection_control",
+        "subtopic": "respiratory_protection",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "INSUFFICIENT_EVIDENCE",
+        "answer_contains_all": ["医用口罩", "源头控制", "通风", "密闭空间", "本轮未检索到可引用指南依据"],
+        "answer_semantic_groups": [
+          {"id": "patient-mask-source-control", "all_of": [["医用口罩"], ["源头控制"]]},
+          {"id": "ventilation-and-close-contact", "all_of": [["通风"], ["密闭空间"], ["近距离接触"]]},
+          {"id": "uncited-general-information", "any_of": ["未检索到可引用指南依据", "没有检索到相应指南证据", "以上为通用医学信息"]}
+        ],
+        "forbidden_contains": ["无需检查", "口罩可以确诊", "已经确诊", "保持口罩清洁", "勤洗手"],
+        "required_chunk_ids": []
+      }
+    },
+    {
+      "case_id": "infection-household-contacts",
+      "category": "传播与防护",
+      "question": "家里有人得肺结核，其他家庭成员怎么办？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "infection_control",
+        "subtopic": "contact_evaluation",
+        "population": ["close_contacts"],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["联系医疗机构", "TST或IGRA", "症状"],
+        "answer_semantic_groups": [
+          {"id": "contacts-should-contact-care", "any_of": ["联系医疗机构", "到医疗机构接受评估", "联系结核病防治机构"]},
+          {"id": "infection-testing", "any_of": ["TST或IGRA", "结核菌素皮肤试验或IGRA", "结核感染检测"]},
+          {"id": "symptom-assessment", "any_of": ["症状", "评估有无症状", "询问结核相关症状", "症状评估"]}
+        ],
+        "forbidden_contains": ["一定感染", "无需评估", "自行用药"],
+        "required_chunk_ids": ["cdc24_close_contact_testing"]
+      }
+    },
+    {
+      "case_id": "infection-daily-precautions",
+      "category": "传播与防护",
+      "question": "怀疑有传染性结核时平时要注意什么？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "infection_control",
+        "subtopic": "infection_control_precautions",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "INSUFFICIENT_EVIDENCE",
+        "answer_contains_all": ["通风", "咳嗽或打喷嚏时遮挡口鼻", "尽快到医疗机构评估", "本轮未检索到可引用指南依据"],
+        "answer_semantic_groups": [
+          {"id": "ventilation", "any_of": ["通风", "保持通风", "加强通风", "开窗通风"]},
+          {"id": "cough-etiquette", "any_of": ["咳嗽或打喷嚏时遮挡口鼻", "咳嗽礼仪", "咳嗽时用纸巾或肘部遮住口鼻"]},
+          {"id": "prompt-medical-evaluation", "any_of": ["尽快到医疗机构评估", "尽快就医检查", "及时接受医学评估"]},
+          {"id": "uncited-general-information", "any_of": ["未检索到可引用指南依据", "没有检索到相应指南证据", "以上为通用医学信息"]}
+        ],
+        "forbidden_contains": ["无需就医", "自行隔离即可", "已经确诊"],
+        "required_chunk_ids": []
+      }
+    },
+    {
+      "case_id": "screening-high-risk-groups",
+      "category": "筛查人群",
+      "question": "哪些人属于TB高风险人群？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "screening",
+        "subtopic": "risk_groups",
+        "population": ["tb_high_risk_population"],
+        "scenario_tags": ["risk_high_risk_groups"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["高风险人群包括", "HIV感染者", "密切接触者"],
+        "answer_semantic_groups": [
+          {"id": "hiv-is-high-risk", "any_of": ["HIV感染者", "HIV阳性人群", "感染HIV的人群"]},
+          {"id": "close-contacts-are-high-risk", "any_of": ["肺结核患者密切接触者", "结核病患者的密切接触者", "密切接触者"]}
+        ],
+        "forbidden_contains": ["所有人都是高风险", "筛查即可确诊"],
+        "required_chunk_ids": ["as26_high_risk"]
+      }
+    },
+    {
+      "case_id": "screening-active-populations",
+      "category": "筛查人群",
+      "question": "哪些人建议主动筛查肺结核？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "screening",
+        "subtopic": "active_screening_population",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["主动筛查优先对象", "重点人群"],
+        "answer_semantic_groups": [
+          {"id": "priority-screening-groups", "any_of": ["主动筛查优先对象", "应优先接受主动筛查", "优先筛查对象"]},
+          {"id": "key-populations-included", "any_of": ["重点人群", "高风险人群", "肺结核高发地区社区人群"]}
+        ],
+        "forbidden_contains": ["任一筛查结果可确诊", "所有人必须筛查"],
+        "required_chunk_ids": ["as26_key_group_path", "as26_key_groups"]
+      }
+    },
+    {
+      "case_id": "screening-diabetes-directness",
+      "category": "筛查人群",
+      "question": "糖尿病患者属于肺结核高风险人群吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "screening",
+        "subtopic": "risk_groups",
+        "population": ["people_with_diabetes", "tb_high_risk_population"],
+        "scenario_tags": ["risk_high_risk_groups"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["糖尿病患者", "重点人群"],
+        "answer_semantic_groups": [
+          {"id": "diabetes-is-key-screening-population", "any_of": ["糖尿病患者属于重点人群", "糖尿病患者被列为重点筛查人群", "糖尿病人群是主动筛查的重点人群"]}
+        ],
+        "forbidden_contains": ["糖尿病患者属于肺结核发病高风险人群", "已经确诊"],
+        "required_chunk_ids": ["as26_key_groups"]
+      }
+    },
+    {
+      "case_id": "screening-older-adult-how",
+      "category": "筛查人群",
+      "question": "65岁以上老年人应该如何主动筛查肺结核？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "screening",
+        "subtopic": "active_screening_population",
+        "population": ["older_adults"],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["高发病率地区", "65岁及以上老年人", "症状筛查", "胸部X线检查"],
+        "answer_semantic_groups": [
+          {"id": "older-adult-key-population", "any_of": ["65岁及以上老年人", "65岁以上老年人", "老年人属于肺结核主动筛查重点人群"]},
+          {"id": "screening-methods", "any_of": ["症状筛查和胸部X线检查", "同时进行症状筛查与胸部X线检查", "症状询问结合胸片检查"]},
+          {"id": "local-epidemiology-matters", "any_of": ["高发病率地区", "结合当地结核病流行水平", "根据当地发病率"]}
+        ],
+        "forbidden_contains": ["仅凭筛查确诊", "所有地区一律相同"],
+        "required_chunk_ids": ["as26_highincidence_path", "as26_key_group_path"]
+      }
+    },
+    {
+      "case_id": "diagnosis-smear-negative-formal",
+      "category": "痰涂片与分子检测",
+      "question": "痰涂片阴性是否可以排除肺结核？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "negative_test_interpretation",
+        "population": [],
+        "scenario_tags": ["test_smear"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["阴性不能排除肺结核"],
+        "answer_semantic_groups": [
+          {"id": "negative-smear-does-not-rule-out", "any_of": ["痰涂片阴性不能排除肺结核", "涂片没有查到菌也不代表没有肺结核", "阴性仍不能排除肺结核"]}
+        ],
+        "forbidden_contains": ["阴性即可排除", "无需进一步评估"],
+        "required_chunk_ids": ["ats17_smear_limitations"]
+      }
+    },
+    {
+      "case_id": "diagnosis-naat-definition",
+      "category": "痰涂片与分子检测",
+      "question": "痰NAAT是什么检查？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "rapid_molecular_diagnostics",
+        "population": [],
+        "scenario_tags": ["test_naat"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["核酸扩增检测", "初始诊断检测"],
+        "answer_semantic_groups": [
+          {"id": "naat-definition", "all_of": [["NAAT"], ["核酸扩增检测", "核酸扩增试验", "分子检测", "检测结核分枝杆菌核酸"]]},
+          {"id": "naat-initial-test-role", "all_of": [["NAAT", "核酸扩增"], ["初始诊断", "首先进行", "优先进行", "首选"]]}
+        ],
+        "forbidden_contains": ["NAAT阴性即可排除", "等同于胸片"],
+        "required_chunk_ids": ["who25_initial_lc_anaat"]
+      }
+    },
+    {
+      "case_id": "diagnosis-xpert-vs-culture-roles",
+      "category": "痰涂片与分子检测",
+      "question": "Xpert和痰培养分别有什么作用？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "test_comparison",
+        "population": [],
+        "scenario_tags": ["test_culture","test_naat"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["Xpert MTB/RIF", "数小时", "培养", "金标准"],
+        "answer_semantic_groups": [
+          {"id": "xpert-rapid-molecular-role", "all_of": [["Xpert", "Xpert MTB/RIF"], ["核酸扩增", "分子检测"], ["快速", "数小时"]]},
+          {"id": "culture-reference-role", "all_of": [["培养", "痰培养"], ["金标准", "参考标准", "病原学确认"]]}
+        ],
+        "forbidden_contains": ["两者作用完全相同", "培养没有作用", "任一阴性即可排除"],
+        "required_chunk_ids": ["cdc25_xpert_role", "cdc25_culture_role"]
+      }
+    },
+    {
+      "case_id": "diagnosis-cxr-abnormal-next-test",
+      "category": "痰涂片与分子检测",
+      "question": "胸片异常后应该做什么检查？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "diagnostic_pathway",
+        "population": [],
+        "scenario_tags": ["test_cxr","after_abnormal_cxr"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["NAAT", "初始诊断检测"],
+        "answer_semantic_groups": [
+          {"id": "abnormal-cxr-needs-microbiological-testing", "all_of": [["胸片异常", "胸片筛查阳性", "影像筛查阳性"], ["痰", "呼吸道标本", "病原学检查", "NAAT"]]},
+          {"id": "naat-as-initial-test", "all_of": [["NAAT", "核酸扩增"], ["初始诊断", "首先进行", "优先进行", "首选"]]}
+        ],
+        "forbidden_contains": ["胸片异常即可确诊", "直接开始用药"],
+        "required_chunk_ids": ["who25_initial_lc_anaat"]
+      }
+    },
+    {
+      "case_id": "diagnosis-xpert-negative",
+      "category": "痰涂片与分子检测",
+      "question": "Xpert阴性可以排除肺结核吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "negative_test_interpretation",
+        "population": [],
+        "scenario_tags": ["test_naat"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["Xpert或其他NAAT阴性不能单独排除肺结核"],
+        "answer_semantic_groups": [
+          {"id": "negative-xpert-does-not-rule-out", "any_of": ["Xpert或其他NAAT阴性不能单独排除肺结核", "Xpert阴性不能单独排除肺结核", "Xpert没有检出也不代表一定没有肺结核", "NAAT阴性仍不能排除肺结核"]}
+        ],
+        "forbidden_contains": ["阴性即可排除", "无需结合临床判断"],
+        "required_chunk_ids": ["cdc25_xpert_role"]
+      }
+    },
+    {
+      "case_id": "diagnosis-culture-vs-smear",
+      "category": "痰涂片与分子检测",
+      "question": "痰培养和痰涂片有什么区别？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "test_comparison",
+        "population": [],
+        "scenario_tags": ["test_smear","test_culture"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["涂片阴性也不能排除肺结核", "培养是肺结核病原学实验室确认的金标准"],
+        "answer_semantic_groups": [
+          {"id": "smear-is-less-sensitive", "any_of": ["涂片阴性也不能排除肺结核", "痰涂片没有查到菌仍可能患肺结核", "涂片的敏感性低于培养"]},
+          {"id": "culture-is-reference-standard", "any_of": ["培养是肺结核病原学实验室确认的金标准", "痰培养是实验室确认的金标准", "培养可用于病原学确认"]}
+        ],
+        "forbidden_contains": ["两者完全相同", "任一阴性即可排除"],
+        "required_chunk_ids": ["cdc25_smear_role", "cdc25_culture_role"]
+      }
+    },
+    {
+      "case_id": "special-child-symptomatic-test",
+      "category": "特殊人群",
+      "question": "儿童有肺结核症状时先做什么检查？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "special_population",
+        "subtopic": "special_population_testing",
+        "population": ["children"],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["15岁以下", "痰标本NAAT"],
+        "answer_semantic_groups": [
+          {"id": "child-population", "any_of": ["儿童", "15岁以下", "小于15岁"]},
+          {"id": "child-respiratory-naat", "all_of": [["痰标本", "痰液", "呼吸道标本"], ["NAAT", "核酸扩增"]]}
+        ],
+        "forbidden_contains": ["只做胸片即可确诊", "直接照搬成人用药"],
+        "required_chunk_ids": ["as26_symptomatic_under15_initial"]
+      }
+    },
+    {
+      "case_id": "special-child-no-sputum",
+      "category": "特殊人群",
+      "question": "儿童咳不出痰时怎么办？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "special_population",
+        "subtopic": "special_population_testing",
+        "population": ["children"],
+        "scenario_tags": ["no_sputum"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["无痰或难以获得合格痰标本", "粪便NAAT"],
+        "answer_semantic_groups": [
+          {"id": "cannot-obtain-sputum", "all_of": [["无痰", "咳不出痰", "无法获得", "难以获得"], ["痰标本", "合格痰", "呼吸道标本"]]},
+          {"id": "stool-naat-option", "all_of": [["粪便", "粪标本"], ["NAAT", "核酸扩增", "分子检测"]]}
+        ],
+        "forbidden_contains": ["强行自行诱导痰", "无需病原学检查"],
+        "required_chunk_ids": ["as26_symptomatic_under15_no_sputum"]
+      }
+    },
+    {
+      "case_id": "special-pregnancy-testing",
+      "category": "特殊人群",
+      "question": "孕妇怀疑肺结核时应该做什么检查？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "special_population",
+        "subtopic": "special_population_testing",
+        "population": ["pregnant_people"],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["及时接受结核病医学评估", "TST或IGRA", "胸部X线", "痰等标本"],
+        "answer_semantic_groups": [
+          {"id": "prompt-pregnancy-evaluation", "any_of": ["及时接受结核病医学评估", "尽快到医疗机构评估", "孕期出现疑似症状应及时就诊"]},
+          {"id": "infection-test-in-pregnancy", "any_of": ["TST或IGRA", "结核菌素皮肤试验或IGRA", "结核感染检测"]},
+          {"id": "chest-radiography-in-pregnancy", "any_of": ["胸部X线检查", "必要时进行胸片检查", "采取防护后进行胸部X线"]},
+          {"id": "respiratory-specimen-testing", "all_of": [["痰标本", "痰等标本", "呼吸道标本"], ["检查", "检测", "病原学"]]}
+        ],
+        "forbidden_contains": ["孕妇不适合进行胸部X线", "孕妇应一律优先接受NAAT", "自行用药"],
+        "required_chunk_ids": ["cdc25_pregnancy_tb_evaluation"]
+      }
+    },
+    {
+      "case_id": "special-hiv-symptomatic-testing",
+      "category": "特殊人群",
+      "question": "HIV感染的成人有结核症状时做什么检查？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "special_population",
+        "subtopic": "special_population_testing",
+        "population": ["people_living_with_hiv"],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["HIV感染的成人和青少年", "并行"],
+        "answer_semantic_groups": [
+          {"id": "hiv-adult-adolescent-population", "any_of": ["HIV感染的成人和青少年", "HIV阳性的成人或青少年", "感染HIV的成人及青少年"]},
+          {"id": "parallel-diagnostic-testing", "any_of": ["并行", "并行进行检测", "同时进行相关病原学检查", "可同步开展检测"]}
+        ],
+        "forbidden_contains": ["HIV阴性或HIV状态未知且有肺结核症状的儿童", "适用于所有年龄"],
+        "required_chunk_ids": ["who25_hiv_adult_concurrent"]
+      }
+    },
+    {
+      "case_id": "special-immunosuppressed-evidence-gap",
+      "category": "特殊人群",
+      "question": "免疫抑制人群怀疑肺结核时应该做什么检查？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "special_population",
+        "subtopic": "special_population_testing",
+        "population": ["immunosuppressed_people"],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "INSUFFICIENT_EVIDENCE",
+        "answer_contains_all": ["没有直接覆盖", "主动筛查场景条款未外推为诊断规则"],
+        "answer_semantic_groups": [
+          {"id": "no-direct-applicable-evidence", "any_of": ["没有直接覆盖", "没有直接覆盖该人群的诊断路径", "缺少适用于免疫抑制人群的直接指南证据", "当前证据不足以给出该人群的具体检查路径"]},
+          {"id": "do-not-extrapolate-screening-rule", "any_of": ["主动筛查场景条款未外推为诊断规则", "主动筛查场景条款不能直接外推为诊断规则", "不能把筛查建议直接当作诊断路径", "不应将其他人群的筛查规则直接套用"]}
+        ],
+        "forbidden_contains": ["可直接套用孕妇路径", "已经确诊"],
+        "required_chunk_ids": []
+      }
+    },
+    {
+      "case_id": "care-setting-universal-hospitalization",
+      "category": "住院与照护场景",
+      "question": "肺结核患者都必须住院治疗吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "treatment_education",
+        "subtopic": "care_setting",
+        "population": [],
+        "scenario_tags": ["care_universal_hospitalization"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["适用于多数结核病患者", "门诊", "可能需要住院", "医疗团队评估"],
+        "answer_semantic_groups": [
+          {"id": "most-can-receive-ambulatory-care", "all_of": [["多数", "大多数"], ["结核病患者", "肺结核患者"], ["门诊", "社区照护", "去中心化照护"]]},
+          {"id": "some-require-inpatient-care", "all_of": [["严重", "特定情况", "部分患者"], ["住院"]]},
+          {"id": "care-setting-clinical-decision", "all_of": [["医疗团队", "临床团队", "医生"], ["评估", "决定", "判断"]]}
+        ],
+        "forbidden_contains": ["所有患者都必须住院", "所有患者都不需要住院", "自行决定出院"],
+        "required_chunk_ids": ["who25_care_setting_ambulatory_majority", "who25_care_setting_inpatient_indications"]
+      }
+    },
+    {
+      "case_id": "care-setting-hospitalization-indications",
+      "category": "住院与照护场景",
+      "question": "什么情况下肺结核需要住院？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "treatment_education",
+        "subtopic": "care_setting",
+        "population": [],
+        "scenario_tags": ["care_inpatient_indications"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["严重的药物敏感或耐药结核", "严重合并症", "严重药物不良反应", "可能需要住院"],
+        "answer_semantic_groups": [
+          {"id": "severe-tb-may-need-admission", "all_of": [["严重的药物敏感或耐药结核", "重症结核", "病情严重"], ["住院"]]},
+          {"id": "severe-comorbidity-indication", "all_of": [["严重"], ["合并症", "伴随疾病", "合并其他疾病"]]},
+          {"id": "severe-adverse-event-indication", "all_of": [["严重"], ["药物不良反应", "用药不良反应", "副作用"]]}
+        ],
+        "forbidden_contains": ["请先上传一张胸片", "所有患者都必须住院", "自行决定住院"],
+        "required_chunk_ids": ["who25_care_setting_inpatient_indications"]
+      }
+    },
+    {
+      "case_id": "treatment-ds-principles",
+      "category": "治疗原则与安全",
+      "question": "肺结核一般怎么治疗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "treatment_education",
+        "subtopic": "treatment_principles",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["治疗方案的选择应由医疗团队", "药物敏感性"],
+        "answer_semantic_groups": [
+          {"id": "regimen-selected-by-clinical-team", "all_of": [["医疗团队", "治疗机构", "专科医生"], ["制定", "选择", "确定"], ["治疗方案", "方案"]]},
+          {"id": "drug-susceptibility-guides-treatment", "all_of": [["药物敏感性", "药敏", "耐药检测"], ["结合", "根据", "取决于"]]}
+        ],
+        "forbidden_contains": ["自行选择方案", "按胸片结果直接用药", "个体化剂量"],
+        "required_chunk_ids": ["who25_ds_selection_factors"]
+      }
+    },
+    {
+      "case_id": "treatment-ds-duration",
+      "category": "治疗原则与安全",
+      "question": "标准疗程大概多久？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "treatment_education",
+        "subtopic": "standard_regimen_duration",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["药物敏感性肺结核", "6个月", "4个月方案不是所有患者的通用替代方案"],
+        "answer_semantic_groups": [
+          {"id": "six-month-ds-regimen", "all_of": [["药物敏感性肺结核", "药敏肺结核"], ["6个月", "六个月"]]},
+          {"id": "four-month-regimen-is-conditional", "all_of": [["4个月", "四个月"], ["特定人群", "符合条件", "特定年龄", "疾病严重程度", "不是所有", "非通用"]]}
+        ],
+        "forbidden_contains": ["所有患者都是4个月", "耐药结核统一6个月", "自行缩短疗程"],
+        "required_chunk_ids": ["who25_ds_duration_options"]
+      }
+    },
+    {
+      "case_id": "treatment-ds-vs-dr",
+      "category": "治疗原则与安全",
+      "question": "耐药结核和普通结核治疗一样吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "treatment_education",
+        "subtopic": "drug_resistant_treatment_comparison",
+        "population": [],
+        "scenario_tags": ["drug_resistance"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "INSUFFICIENT_EVIDENCE",
+        "answer_contains_all": ["不一样", "不能直接照搬", "本轮未检索到可引用指南依据"],
+        "answer_semantic_groups": [
+          {"id": "ds-and-dr-treatment-differ", "any_of": ["不一样", "耐药结核和药物敏感结核的治疗不一样", "两者治疗方案不同", "耐药结核需要不同的治疗策略"]},
+          {"id": "do-not-copy-ds-regimen", "any_of": ["不能直接照搬", "不能直接照搬药物敏感性方案", "不能套用普通结核的治疗方案", "药敏方案不适用于耐药结核"]},
+          {"id": "uncited-general-information", "any_of": ["未检索到可引用指南依据", "没有检索到相应指南证据", "以上为通用医学信息"]}
+        ],
+        "forbidden_contains": ["治疗完全一样", "具体剂量", "自行换药"],
+        "required_chunk_ids": []
+      }
+    },
+    {
+      "case_id": "treatment-dr-regimen-gap",
+      "category": "治疗原则与安全",
+      "question": "耐药肺结核怎么治疗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "treatment_education",
+        "subtopic": "treatment_principles",
+        "population": [],
+        "scenario_tags": ["drug_resistance"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "INSUFFICIENT_EVIDENCE",
+        "answer_contains_all": ["不能把药物敏感性方案套用于耐药情形"],
+        "answer_semantic_groups": [
+          {"id": "do-not-use-ds-regimen-for-dr-tb", "any_of": ["不能把药物敏感性方案套用于耐药情形", "耐药肺结核不能直接采用普通药敏方案", "治疗必须根据完整耐药谱制定"]}
+        ],
+        "forbidden_contains": ["直接套用6个月方案", "具体处方", "自行用药"],
+        "required_chunk_ids": []
+      }
+    },
+    {
+      "case_id": "treatment-missed-dose",
+      "category": "治疗原则与安全",
+      "question": "漏服一次抗结核药怎么办？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "treatment_education",
+        "subtopic": "treatment_adherence",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["跳过该次漏服", "按原计划服下一次", "告知治疗机构", "不要自行补成双倍剂量"],
+        "answer_semantic_groups": [
+          {"id": "never-double-dose", "all_of": [["不要", "不能", "不应"], ["双倍剂量", "双倍服药", "加倍服药"]]},
+          {"id": "contact-treatment-team", "all_of": [["联系", "告知", "咨询"], ["治疗机构", "治疗团队", "医务人员", "医生"]]},
+          {"id": "follow-missed-dose-plan", "all_of": [["漏服", "漏服剂量"], ["按原计划", "按治疗方案", "按医嘱", "接近下次时跳过"]]}
+        ],
+        "forbidden_contains": ["下一次服双倍", "自行补量", "自行停药"],
+        "required_chunk_ids": ["cdc25_missed_single_dose"]
+      }
+    },
+    {
+      "case_id": "treatment-stop-after-discomfort",
+      "category": "治疗原则与安全",
+      "question": "服药后不舒服可以自行停药吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "treatment_education",
+        "subtopic": "treatment_principles",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "INSUFFICIENT_EVIDENCE",
+        "answer_contains_all": ["不要自行停药", "联系原治疗机构"],
+        "answer_semantic_groups": [
+          {"id": "do-not-stop-medication-alone", "any_of": ["不要自行停药", "不能自己中断治疗", "不要擅自停止抗结核药"]},
+          {"id": "contact-treatment-provider", "any_of": ["联系原治疗机构", "尽快联系治疗团队", "向负责治疗的医生报告不适"]}
+        ],
+        "forbidden_contains": ["立即自行停药", "自行减量", "自行换药"],
+        "required_chunk_ids": []
+      }
+    },
+    {
+      "case_id": "treatment-adverse-effects-list",
+      "category": "治疗原则与安全",
+      "question": "抗结核治疗常见副作用有哪些？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "treatment_education",
+        "subtopic": "adverse_effects",
+        "population": [],
+        "scenario_tags": ["adverse_general_list"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["胃肠道不适", "肝损伤", "皮疹或发热", "立即联系治疗机构"],
+        "answer_semantic_groups": [
+          {"id": "gastrointestinal-adverse-effects", "any_of": ["胃肠道不适", "恶心或呕吐", "食欲下降"]},
+          {"id": "hepatic-adverse-effects", "any_of": ["肝损伤", "肝功能异常", "黄疸"]},
+          {"id": "skin-or-systemic-reaction", "any_of": ["皮疹或发热", "皮肤过敏反应", "发热或皮疹"]},
+          {"id": "report-serious-symptoms", "any_of": ["立即联系治疗机构", "出现严重症状应尽快联系医生", "严重不适需马上就医"]}
+        ],
+        "forbidden_contains": ["可以自行停药", "自行调整剂量", "具体副作用发生率"],
+        "required_chunk_ids": ["cdc25_common_tb_drug_adverse_events"]
+      }
+    },
+    {
+      "case_id": "general-sugar-intake",
+      "category": "一般常识与证据缺失",
+      "question": "人每天应该摄入多少糖分？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["general_chat"],
+        "scope": null,
+        "subtopic": null,
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": [],
+        "answer_status": null,
+        "answer_contains_all": ["通用问答模型当前未启用"],
+        "answer_semantic_groups": [
+          {"id": "free-sugars-scope", "any_of": ["游离糖", "添加糖", "不包括完整水果中的天然糖"]},
+          {"id": "ten-percent-energy-limit", "any_of": ["低于每日总能量的10%", "少于总热量的10%", "不超过每日能量摄入的10%"]},
+          {"id": "five-percent-conditional-target", "any_of": ["进一步降到5%以下", "限制到总能量的5%可获得额外健康益处", "2000千卡饮食下5%约为25克"]}
+        ],
+        "forbidden_contains": ["肺结核筛查结果", "已经确诊", "处方", "10勺蜂蜜"],
+        "required_chunk_ids": []
+      }
+    },
+    {
+      "case_id": "diagnosis-symptom-self-judgement",
+      "category": "一般常识与证据缺失",
+      "question": "我咳嗽两周还有低热，是不是得肺结核了？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "diagnostic_pathway",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["临床表现", "综合分析", "NAAT", "初始诊断检测"],
+        "answer_semantic_groups": [
+          {"id": "symptoms-alone-cannot-diagnose", "all_of": [["症状", "咳嗽和低热", "咳嗽两周"], ["不能判断", "不能直接确诊", "不足以诊断", "不能仅凭"]]},
+          {"id": "comprehensive-evaluation", "all_of": [["综合", "完整医学评估"], ["临床表现", "病史", "症状"], ["检查", "影像", "病原学"]]},
+          {"id": "naat-initial-diagnostic-test", "all_of": [["NAAT", "核酸扩增"], ["初始诊断", "优先进行", "初始检查"]]}
+        ],
+        "forbidden_contains": ["请先上传一张胸片", "已经确诊", "症状即可排除"],
+        "required_chunk_ids": ["ws288_comprehensive_diagnosis", "who25_initial_lc_anaat"]
+      }
+    },
+    {
+      "case_id": "diagnosis-tb-infection-test-positive",
+      "category": "痰涂片与分子检测",
+      "question": "结核感染检测阳性说明什么？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "tb_infection_test_interpretation",
+        "population": [],
+        "scenario_tags": ["tb_infection_test"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["TST或IGRA阳性", "不能区分潜伏结核感染和活动性结核病", "需要结合症状评估"],
+        "answer_semantic_groups": [
+          {"id": "positive-test-indicates-infection", "all_of": [["TST或IGRA阳性", "结核感染检测阳性", "检测阳性"], ["提示结核感染", "可能感染过", "存在感染证据"]]},
+          {"id": "cannot-distinguish-latent-from-active", "all_of": [["潜伏结核感染", "潜伏感染"], ["活动性结核病", "活动性结核"], ["不能区分", "不能判断", "不能仅凭"]]},
+          {"id": "needs-further-evaluation", "all_of": [["进一步", "还需", "需要"], ["症状评估", "胸部影像", "排查活动性结核", "其他检查"]]}
+        ],
+        "forbidden_contains": ["血清抗体阳性即可确诊", "仅凭胸片和症状确定", "已经确诊"],
+        "required_chunk_ids": ["cdc25_infection_test_positive"]
+      }
+    },
+    {
+      "case_id": "infection-cohabitant-testing",
+      "category": "传播与防护",
+      "question": "我和肺结核患者住在一起，需要做什么检查？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "infection_control",
+        "subtopic": "contact_evaluation",
+        "population": ["close_contacts"],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["联系医疗机构", "TST或IGRA", "症状"],
+        "answer_semantic_groups": [
+          {"id": "cohabitant-contact-evaluation", "any_of": ["联系医疗机构", "接受密切接触者评估", "到结核病防治机构进行接触者筛查"]},
+          {"id": "infection-testing", "any_of": ["TST或IGRA", "结核菌素皮肤试验或IGRA", "结核感染检测"]},
+          {"id": "symptom-screening", "any_of": ["症状筛查", "评估有无结核相关症状", "询问咳嗽发热等症状"]}
+        ],
+        "forbidden_contains": ["同住一定会感染", "无需检查", "自行预防性用药"],
+        "required_chunk_ids": ["cdc24_close_contact_testing"]
+      }
+    },
+    {
+      "case_id": "special-child-tst-igra-active-disease",
+      "category": "特殊人群",
+      "question": "儿童TST或IGRA阳性能诊断活动性肺结核吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "special_population",
+        "subtopic": "tb_infection_test_interpretation",
+        "population": ["children"],
+        "scenario_tags": ["tb_infection_test"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["TST或IGRA阳性", "不能区分潜伏结核感染和活动性结核病"],
+        "answer_semantic_groups": [
+          {"id": "positive-test-not-active-tb-diagnosis", "any_of": ["TST或IGRA阳性不能诊断活动性肺结核", "阳性不等于儿童患有活动性结核病", "不能仅凭感染检测阳性确定已经发病"]},
+          {"id": "cannot-distinguish-latent-from-active", "any_of": ["不能区分潜伏结核感染和活动性结核病", "不能判断是潜伏感染还是活动性结核", "还需要进一步排除活动性结核病"]}
+        ],
+        "forbidden_contains": ["阳性就是活动性肺结核", "可直接开始治疗", "无需其他评估"],
+        "required_chunk_ids": ["cdc25_child_tb_infection_test_selection", "cdc25_infection_test_positive"]
+      }
+    },
+    {
+      "case_id": "diagnosis-culture-negative",
+      "category": "痰涂片与分子检测",
+      "question": "痰培养阴性可以排除肺结核吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "negative_test_interpretation",
+        "population": [],
+        "scenario_tags": ["test_culture"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["培养阴性不一定排除肺结核", "临床表现和其他证据"],
+        "answer_semantic_groups": [
+          {"id": "negative-culture-does-not-always-rule-out", "any_of": ["培养阴性不一定排除肺结核", "痰培养没有长出结核菌仍不能完全排除", "培养阴性并不代表一定没有肺结核"]},
+          {"id": "interpret-with-clinical-evidence", "any_of": ["需要结合临床表现和其他证据", "应综合症状、影像和其他检查", "结果需结合临床情况判断"]}
+        ],
+        "forbidden_contains": ["痰涂片阴性", "培养阴性即可排除", "无需进一步评估"],
+        "required_chunk_ids": ["cdc25_culture_negative_limit"]
+      }
+    },
+    {
+      "case_id": "infection-when-noninfectious",
+      "category": "传播与防护",
+      "question": "肺结核患者什么时候可以认为没有传染性了？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "infection_control",
+        "subtopic": "infectiousness_clearance",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["不能只按固定治疗天数自行判断", "治疗执行和反应", "痰检查"],
+        "answer_semantic_groups": [
+          {"id": "not-based-on-fixed-days-alone", "all_of": [["固定治疗天数", "固定天数", "治疗几天"], ["不能只按", "不能仅凭", "不能自行判断", "没有统一"]]},
+          {"id": "clinical-and-treatment-response", "all_of": [["治疗执行", "规范服药", "治疗依从性"], ["治疗反应", "临床改善", "症状变化"]]},
+          {"id": "sputum-results-matter", "all_of": [["痰检查", "痰涂片", "痰培养", "病原学复查"], ["结果", "参考", "结合", "复查"]]}
+        ],
+        "forbidden_contains": ["固定治疗几天就没有传染性", "已经没有传染性", "会。"],
+        "required_chunk_ids": ["cdc25_infectiousness_followup"]
+      }
+    },
+    {
+      "case_id": "infection-return-work-school",
+      "category": "传播与防护",
+      "question": "肺结核患者什么时候可以上班或上学？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "infection_control",
+        "subtopic": "return_to_work_school",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["医疗机构确认安全前", "不应自行返工、返校", "传染性评估"],
+        "answer_semantic_groups": [
+          {"id": "return-requires-clinical-clearance", "any_of": ["医疗机构确认安全后再返工返校", "需要医生评估后决定何时复工复学", "返校或上班前应获得医疗机构确认"]},
+          {"id": "do-not-self-clear", "any_of": ["不应自行返工、返校", "不要根据治疗天数自行决定返校", "不能自行判断已经可以上班"]},
+          {"id": "infectiousness-assessment", "any_of": ["需要进行传染性评估", "结合症状和痰检查判断传染性", "需评估是否仍具有传染性"]}
+        ],
+        "forbidden_contains": ["治疗两周后一律可以", "自行决定返校", "无需评估"],
+        "required_chunk_ids": ["cdc25_return_to_activities"]
+      }
+    },
+    {
+      "case_id": "diagnosis-who-universal-ct",
+      "category": "痰涂片与分子检测",
+      "question": "WHO是不是要求所有疑似肺结核的人都做CT？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "imaging_modality_selection",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "INSUFFICIENT_EVIDENCE",
+        "answer_contains_all": ["当前受审核WHO证据不支持所有疑似肺结核者都必须做CT"],
+        "answer_semantic_groups": [
+          {"id": "no-universal-ct-requirement", "any_of": ["WHO并不要求所有疑似肺结核者都做CT", "没有证据支持所有疑似者必须接受CT", "CT不是每位疑似肺结核者的必做检查"]}
+        ],
+        "forbidden_contains": ["WHO要求所有疑似者做CT", "CT可以单独确诊", "人人必须做CT"],
+        "required_chunk_ids": []
+      }
+    },
+    {
+      "case_id": "treatment-visual-symptom",
+      "category": "治疗原则与安全",
+      "question": "吃抗结核药后视力变模糊怎么办？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "treatment_education",
+        "subtopic": "adverse_effects",
+        "population": [],
+        "scenario_tags": ["adverse_visual"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["视物模糊", "严重不良反应信号", "立即联系治疗机构"],
+        "answer_semantic_groups": [
+          {"id": "blurred-vision-serious-signal", "any_of": ["视物模糊属于严重不良反应信号", "视力变模糊可能是严重药物不良反应", "用药后视力变化需要紧急处理"]},
+          {"id": "urgent-provider-contact", "any_of": ["立即联系治疗机构", "应马上联系负责治疗的医生", "尽快就医并告知抗结核用药"]}
+        ],
+        "forbidden_contains": ["继续观察即可", "自行停药", "自行换药"],
+        "required_chunk_ids": ["cdc25_blurred_vision_serious"]
+      }
+    },
+    {
+      "case_id": "diagnosis-normal-cxr-exclusion",
+      "category": "痰涂片与分子检测",
+      "question": "胸片正常可以排除肺结核吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "negative_test_interpretation",
+        "population": [],
+        "scenario_tags": ["test_cxr"],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["不能把“胸片正常”作为所有情境下排除肺结核的规则", "有症状或临床仍怀疑时"],
+        "answer_semantic_groups": [
+          {"id": "normal-cxr-does-not-always-rule-out", "all_of": [["胸片正常", "正常胸片"], ["不能排除", "不代表一定没有", "不能只凭"]]},
+          {"id": "persistent-suspicion-needs-evaluation", "all_of": [["有症状", "症状持续", "临床怀疑", "高风险"], ["进一步评估", "病原学检查", "继续检查"]]}
+        ],
+        "forbidden_contains": ["胸片正常即可排除", "无需病原学评估", "已经排除"],
+        "required_chunk_ids": ["cdc25_normal_cxr_context"]
+      }
+    },
+    {
+      "case_id": "diagnosis-infection-vs-disease",
+      "category": "一般常识与证据缺失",
+      "question": "结核感染和活动性结核病是一回事吗？",
+      "mode": "regression",
+      "expected": {
+        "task_goals": ["search_tb_knowledge"],
+        "scope": "diagnostic_testing",
+        "subtopic": "infection_vs_disease",
+        "population": [],
+        "scenario_tags": [],
+        "tool_names": ["search_tb_knowledge"],
+        "answer_status": "ANSWERED",
+        "answer_contains_all": ["不能区分潜伏结核感染和活动性结核病", "需要结合症状评估"],
+        "answer_semantic_groups": [
+          {"id": "infection-and-active-disease-differ", "all_of": [["结核感染", "潜伏结核感染", "感染结核菌"], ["活动性结核病", "活动性结核"], ["不是一回事", "不同于", "不等于"]]},
+          {"id": "infection-test-cannot-distinguish", "all_of": [["感染检测", "TST或IGRA", "检测"], ["不能区分", "不能判断", "需要结合症状和其他检查"]]}
+        ],
+        "forbidden_contains": ["感染就等于活动性结核病", "可以据此判断你已发病", "直接开始治疗"],
+        "required_chunk_ids": ["cdc25_infection_test_positive"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "suite_id": "tbx_agent_trajectory_synthetic",
+  "suite_version": "1.1.0",
+  "title": "TBX-Agent restricted Plan-and-Solve trajectory contracts",
+  "fixture_kind": "synthetic_non_clinical",
+  "clinical_validation": false,
+  "selection_use": false,
+  "locked_or_hidden_test_used": false,
+  "cases_file": "cases.jsonl",
+  "cases_sha256": "f53a0297c5dcc0d64b410ba53cb93f1f345d64210bc32940f69517813d031a70",
+  "expected_case_count": 7
+}

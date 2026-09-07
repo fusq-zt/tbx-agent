@@ -1,0 +1,109 @@
+schema_version: 1
+
+# Artifact files are never committed to this repository.  Public entries below
+# were verified against immutable local receipts before being added.  Custom
+# rank03 weights ship as a separate, hash-verified inference bundle. The
+# locally converted GGUF may be supplied from an independently verified source.
+
+groups:
+  anatomy:
+    - xrv_chestxdet_pspnet
+  medsam_refinement:
+    - medsam_vit_base_weights
+    - medsam_vit_base_config
+    - medsam_vit_base_preprocessor
+  historical_qwen_runtime:
+    - qwen35_4b_q4_k_m_gguf
+
+artifacts:
+  xrv_chestxdet_pspnet:
+    description: TorchXRayVision ChestX-Det PSPNet anatomical segmentation weights.
+    destination: anatomy/torchxrayvision/pspnet_chestxray_best_model_4.pth
+    revision: torchxrayvision-release-v1
+    file: pspnet_chestxray_best_model_4.pth
+    size_bytes: 272988989
+    sha256: 019b167eac6b729fc1bb92bbbc185fc1730aaa65819f4e3fe718186cadc044fc
+    license:
+      id: Apache-2.0
+      url: https://raw.githubusercontent.com/mlmed/torchxrayvision/df3c84c8c31bebbeb8696d400c862e615110bdfc/torchxrayvision/baseline_models/chestx_det/LICENSE.txt
+      redistributable: true
+      notice: Cite TorchXRayVision, ChestX-Det, and the structure-aware relation network paper.
+    sources:
+      - kind: https
+        url: https://github.com/mlmed/torchxrayvision/releases/download/v1/pspnet_chestxray_best_model_4.pth
+        revision: v1
+        file: pspnet_chestxray_best_model_4.pth
+
+  medsam_vit_base_weights:
+    description: Official wanglab MedSAM ViT-B Hugging Face model weights for optional box-prompt contour visualization.
+    destination: refinement/wanglab-medsam-vit-base/pytorch_model.bin
+    revision: de8488bca37bb1d4fb190f612c516126d739ce3b
+    file: pytorch_model.bin
+    size_bytes: 375045749
+    sha256: 0ef67838fba16f16c0e308eaf7a3ae6fbf4fe8e13d7a120ca932671ed9c47db0
+    license:
+      id: Apache-2.0
+      url: https://raw.githubusercontent.com/bowang-lab/MedSAM/d71e8a1a99ad751840a22a7fa3ecfb4166fb1488/LICENSE
+      redistributable: true
+      notice: Visualization-only box-prompt model; no TBX11K contour validation is claimed.
+    sources:
+      - kind: huggingface
+        repo_id: wanglab/medsam-vit-base
+        revision: de8488bca37bb1d4fb190f612c516126d739ce3b
+        file: pytorch_model.bin
+
+  medsam_vit_base_config:
+    description: Immutable Hugging Face SamModel configuration paired with the MedSAM weights.
+    destination: refinement/wanglab-medsam-vit-base/config.json
+    revision: de8488bca37bb1d4fb190f612c516126d739ce3b
+    file: config.json
+    size_bytes: 6517
+    sha256: 930245d4ff7203cc9c10a69dba5a87c251a0be79a8b1448eea7412d4a0ef1432
+    license:
+      id: Apache-2.0
+      url: https://raw.githubusercontent.com/bowang-lab/MedSAM/d71e8a1a99ad751840a22a7fa3ecfb4166fb1488/LICENSE
+      redistributable: true
+      notice: Must be loaded with the exact paired model revision.
+    sources:
+      - kind: huggingface
+        repo_id: wanglab/medsam-vit-base
+        revision: de8488bca37bb1d4fb190f612c516126d739ce3b
+        file: config.json
+
+  medsam_vit_base_preprocessor:
+    description: Immutable SamProcessor configuration paired with the MedSAM weights.
+    destination: refinement/wanglab-medsam-vit-base/preprocessor_config.json
+    revision: de8488bca37bb1d4fb190f612c516126d739ce3b
+    file: preprocessor_config.json
+    size_bytes: 466
+    sha256: 225545a743c654e3c495ec6f545a0eaba57c8ba3fbbd8483b3cb1c0fc58db517
+    license:
+      id: Apache-2.0
+      url: https://raw.githubusercontent.com/bowang-lab/MedSAM/d71e8a1a99ad751840a22a7fa3ecfb4166fb1488/LICENSE
+      redistributable: true
+      notice: Must be loaded with the exact paired model revision.
+    sources:
+      - kind: huggingface
+        repo_id: wanglab/medsam-vit-base
+        revision: de8488bca37bb1d4fb190f612c516126d739ce3b
+        file: preprocessor_config.json
+
+  qwen35_4b_q4_k_m_gguf:
+    description: Historical text-only Qwen Q4_K_M reproduction; not the active local LLM.
+    destination: llm/qwen3.5-4b-text-no-mtp-q4_k_m.gguf
+    revision: 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+    file: qwen3.5-4b-text-no-mtp-q4_k_m.gguf
+    size_bytes: 2708804448
+    sha256: 7f7e604801ab2997fffb9852d3602429e7b99eb79f778185efde4448c59da6de
+    license:
+      id: Apache-2.0
+      url: https://huggingface.co/Qwen/Qwen3.5-4B/blob/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a/LICENSE
+      redistributable: true
+      notice: Locally converted derivative; publish only with its conversion receipt and source attribution.
+    source_override:
+      url_env: TBX_QWEN35_Q4_GGUF_URL
+      hf_repo_env: TBX_QWEN35_GGUF_HF_REPO
+      hf_revision_env: TBX_QWEN35_GGUF_HF_REVISION
+      hf_file: qwen3.5-4b-text-no-mtp-q4_k_m.gguf
+      hf_token_env: HF_TOKEN
+      hf_endpoint_env: HF_ENDPOINT

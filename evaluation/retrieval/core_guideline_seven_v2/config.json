@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "experiment_id": "tbx-core-guideline-seven-retrieval-v2",
+  "hypothesis": "The unchanged seven-query core split preserves its screening, diagnosis, drug-susceptible treatment, and care-setting behavior after rebinding to the reviewed v7 corpus generation, while a respiratory-protection-only scope prevents newly authorized generic infection-control evidence from answering the mask question.",
+  "purpose": "versioned_engineering_retrieval_evaluation_not_clinical_validation",
+  "prohibited_uses": [
+    "clinical validation or clinical conclusions",
+    "use of a locked local test split or official hidden test set",
+    "silent corpus, chunk, split, or label regeneration",
+    "retriever or model selection using core_guideline_seven_v1 results"
+  ],
+  "seed": 20260901,
+  "split_id": "fixed-reviewed-corpus-v1",
+  "suite_id": "tbx-core-guideline-seven",
+  "suite_version": "2.0.0",
+  "query_count": 7,
+  "answerable_query_count": 6,
+  "no_answer_query_count": 1,
+  "k_values": [1, 3, 5, 10],
+  "queries_path": "queries.jsonl",
+  "queries_sha256": "cec79c75462244f46922ce530f13b3e0fa4519f9b2694084e3413f036fdaace3",
+  "qrels_path": "qrels.jsonl",
+  "qrels_file_sha256": "ce01f2d1b327dd9ee99ab0d87dc64f82f2efa435c7f6a9297bb228a48f48c778",
+  "knowledge_dir": "../../../knowledge",
+  "expected_snapshot_id": "tbx-guidelines-curated-2026-09-01-v7",
+  "expected_source_manifest_sha256": "2f26d79684f6472c0f957eb9f1e1b4f415a5a7ceb42eca4f15080ef698350620",
+  "expected_chunks_sha256": "2672d5256d758589525b6957ddcb05cd446ffeeb15062c65212787932a5c8a36",
+  "expected_corpus_generation_id": "sparse-1b305b3eb573708ed7989a3e",
+  "retrieval_config_path": "../../../configs/retrieval.yaml",
+  "retrieval_config_sha256": "534dbfebe4c81bab8bd6f9d93a97c036af909e84aab9f0f2373de54ea5c72e7e",
+  "metric_contract": {
+    "ranking_population": "answerable_queries_only",
+    "ranking_metrics": ["recall_at_1", "recall_at_3", "recall_at_5", "recall_at_10", "mrr_at_10", "ndcg_at_10"],
+    "no_answer_metric": "empty_successful_result_is_correct_abstention",
+    "retain_per_query_errors": true
+  }
+}
