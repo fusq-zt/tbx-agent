@@ -1,0 +1,3 @@
+# Preserve exact fixture/configuration bytes on every platform. Their SHA-256
+# identities must not change when a Windows user has core.autocrlf=true.
+* -text

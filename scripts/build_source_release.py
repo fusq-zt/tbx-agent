@@ -30,6 +30,7 @@ PUBLIC_ROOT_FILES = frozenset(
     {
         ".dockerignore",
         ".env.example",
+        ".gitattributes",
         ".gitignore",
         "CHANGELOG.md",
         "CITATION.cff",
