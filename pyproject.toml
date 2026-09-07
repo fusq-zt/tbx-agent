@@ -58,7 +58,7 @@ qwen-build = [
   "gguf==0.19.0",
   "huggingface-hub==0.36.2",
   "numpy==1.26.4",
-  "protobuf==4.25.9",
+  "protobuf==5.29.6",
   "safetensors==0.8.0",
   "sentencepiece==0.2.2",
   "torch==2.11.0",
