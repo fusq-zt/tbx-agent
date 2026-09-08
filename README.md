@@ -11,7 +11,7 @@
 ![UI](https://img.shields.io/badge/UI-Streamlit-FF4B4B?style=flat-square)
 ![Deployment](https://img.shields.io/badge/Deployment-Local--first-475569?style=flat-square)
 
-[核心能力](#核心能力) · [模型性能](#模型性能) · [工作流程](#工作流程) · [使用真实模型](#使用真实模型) · [项目文档](#项目文档)
+[核心能力](#核心能力) · [视觉模型性能](#视觉模型性能) · [工作流程](#工作流程) · [使用真实模型](#使用真实模型) · [项目文档](#项目文档)
 
 </div>
 
@@ -33,9 +33,9 @@ TBX-Agent 将胸片分类、候选区域定位、肺野分割和指南检索接�
 默认语言层为 **MedGemma 1.5 4B Q4_K_M + llama.cpp**，基于专用工具产生的文本证据组织回答。
 视觉分析由用户问题触发，上传时完成影像解码、质量检查与病例建立。
 
-## 模型性能
+## 视觉模型性能
 
-在 **TBX11K 官方测试集**上，本项目视觉模型的类别无关检测（合并结核子类）取得 **AP50 71.11、AP75 30.58、AP@[0.50:0.95] 35.38**，较所对照的[历史榜单](https://competitions.codalab.org/competitions/25848#results)最佳值分别提升 **9.37、10.94、8.06 个百分点**，在严格定位评价和综合 AP 上表现突出。分类 **Accuracy 为 91.31%、AUC 为 97.11%**，六项分类指标中有五项优于 Faster R-CNN-ResNet50 基线。
+在 **CodaLab、Codabench 平台**的 **TBX11K 官方测试集**评测中，本项目视觉模型的类别无关检测（合并结核子类）取得 **AP50 71.11、AP75 30.58、AP@[0.50:0.95] 35.38**，较所对照的[历史榜单](https://competitions.codalab.org/competitions/25848#results)最佳值分别提升 **9.37、10.94、8.06 个百分点**，在严格定位评价和综合 AP 上表现突出。分类 **Accuracy 为 91.31%、AUC 为 97.11%**。
 
 ## 工作流程
 
