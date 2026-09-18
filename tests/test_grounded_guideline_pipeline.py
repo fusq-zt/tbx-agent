@@ -207,26 +207,16 @@ def test_query_first_guidance_tool_resolves_negated_entity_inside_retrieval(
         def complete_structured(self, **kwargs):
             schema_name = kwargs["schema_name"]
             self.schemas.append(schema_name)
-            if schema_name == "tbx_plan_react_plan":
-                payload = {
-                    "goal": "回答当前结核病检查问题",
-                    "steps": [
-                        {
-                            "objective": "检索适用的结核病检查证据",
-                            "evidence_need": "tb_knowledge",
-                        },
-                        {"objective": "整合观察并回答", "evidence_need": "none"},
-                    ],
-                }
-            elif schema_name == "tbx_agent_tool_selection":
-                prompt = json.loads(kwargs["messages"][-1]["content"])
-                payload = (
-                    {"tool": None, "direct_answer": "已根据检索证据回答。"}
-                    if prompt["observations"]
-                    else {"tool": "search_tb_knowledge", "direct_answer": None}
-                )
-            else:
-                raise AssertionError(f"unexpected schema: {schema_name}")
+            assert schema_name == "tbx_react_decision"
+            prefix = "TBX_INTERNAL_CONTEXT_JSON="
+            system = kwargs["messages"][0]["content"]
+            prompt = json.loads(system.split(prefix, maxsplit=1)[1])
+            payload = (
+                {"action": "answer", "answer_focus": "general",
+                 "evidence": ["tb_knowledge"], "answer": None}
+                if prompt["observations"]
+                else {"action": "tool", "tool": "search_tb_knowledge"}
+            )
             return json.dumps(payload, ensure_ascii=False), {
                 "prompt_tokens": 20,
                 "completion_tokens": 10,
@@ -242,11 +232,12 @@ def test_query_first_guidance_tool_resolves_negated_entity_inside_retrieval(
     )
 
     assert generator.schemas == [
-        "tbx_plan_react_plan",
-        "tbx_agent_tool_selection",
-        "tbx_agent_tool_selection",
+        "tbx_react_decision",
+        "tbx_react_decision",
     ]
     assert result.execution_plan["source"] == "plan_react"
+    assert result.execution_plan["plan_metadata"]["planning_used"] is False
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is False
     assert result.trace.task_spec.guideline_scope is None
     assert result.trace.task_spec.subtopic is None
     assert result.trace.task_spec.product_terms == []

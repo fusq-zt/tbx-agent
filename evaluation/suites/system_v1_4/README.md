@@ -1,11 +1,9 @@
-# TBX-Agent system suite v1.4
+# system_v1_4
 
-This synthetic, non-clinical suite preserves the v1.3 visual-routing contracts
-and migrates every guideline route/tool expectation to the single
-`retrieve_guideline` action. Treatment evidence gaps use the v5
-`answer_status` contract and do not require a fabricated citation. Published
-v1.1-v1.3 fixtures remain unchanged for historical replay through the evaluator's
-explicit legacy-name compatibility projection.
+Synthetic fixtures for deterministic software contracts and failure handling. Tests load `cases.jsonl` and its matching
+`manifest.json`; keep their IDs, expectations and content hashes together. These assets contain
+no patient images, model weights or execution results.
 
-The suite does not use TBX11K, a locked split, a hidden test set, patient data,
-or model weights. It is a software and Agent contract regression suite only.
+The versioned directories support compatibility and regression tests. They are not independent
+clinical datasets or a measure of real-model accuracy. Current test scope and results are in
+[the evaluation overview](../../../docs/evaluation.md).

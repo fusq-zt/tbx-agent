@@ -13,6 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
 from build_source_release import (  # noqa: E402
     ARCHIVE_PREFIX,
     DEPLOYMENT_RELEASE_FILES,
+    PUBLIC_IMAGE_FILES,
     REQUIRED_RELEASE_FILES,
     ReleasePolicyError,
     build_archive,
@@ -59,7 +60,6 @@ SYSTEM_BENCH_RELEASE_FILES = {
     "evaluation/suites/trajectory_v3/README.md",
     "evaluation/suites/trajectory_v3/cases.jsonl",
     "evaluation/suites/trajectory_v3/manifest.json",
-    "docs/agent_trajectory_evaluation.md",
     "src/tbx_agent/evaluation/trajectory.py",
     "src/tbx_agent/evaluation/system_bench.py",
     "src/tbx_agent/evaluation/system_bench_ci.py",
@@ -151,6 +151,8 @@ def test_deployment_surface_is_mandatory_in_every_source_release() -> None:
     "src/tbx_agent/training/rank03_detector.py",
     "scripts/train_rank03.py",
     "src/tbx_agent/vision/train_segmentation.py",
+    "tests/test_rank03_training.py",
+    "tests/test_rank03_recording.py",
 ])
 def test_training_implementations_cannot_enter_inference_release(path: str) -> None:
     assert not is_public_path(path)
@@ -304,6 +306,39 @@ def test_nested_runtime_data_directories_fail_closed(relative: str) -> None:
 
 def test_model_artifact_manager_source_package_remains_public() -> None:
     assert validate_release_path("src/tbx_agent/artifacts/manifest.py")
+
+
+def test_only_approved_product_screenshots_can_enter_release() -> None:
+    assert {
+        "docs/images/chest-analysis.png", "docs/images/grounded-qa.png",
+    } == PUBLIC_IMAGE_FILES
+    assert PUBLIC_IMAGE_FILES <= REQUIRED_RELEASE_FILES
+    for relative in PUBLIC_IMAGE_FILES:
+        assert validate_release_path(relative) == relative
+        scan_content(relative, b"\x89PNG\r\n\x1a\n")
+        with pytest.raises(ReleasePolicyError, match="not a PNG"):
+            scan_content(relative, b"not an image")
+    for relative in ("docs/images/patient.png", "tests/patient.png", "ui/screenshot.png"):
+        with pytest.raises(ReleasePolicyError):
+            validate_release_path(relative)
+
+
+def test_approved_screenshots_keep_release_size_limits(tmp_path: Path) -> None:
+    screenshot = tmp_path / "docs/images/chest-analysis.png"
+    screenshot.parent.mkdir(parents=True)
+    screenshot.write_bytes(b"\x89PNG\r\n\x1a\n" + bytes(128))
+    with pytest.raises(ReleasePolicyError, match="exceeds.*docs/images/chest-analysis.png"):
+        collect_source_files(tmp_path, max_file_bytes=64)
+
+
+@pytest.mark.parametrize("relative", [
+    "CHANGELOG.md", "docs/agent_trajectory_evaluation.md", "docs/guideline_audit.md",
+    "docs/deployment/publishing.md", "docs/deployment/source_release.md",
+])
+def test_release_excludes_maintenance_history(relative: str) -> None:
+    assert not is_public_path(relative)
+    with pytest.raises(ReleasePolicyError):
+        validate_release_path(relative)
 
 
 def test_workstation_profile_paths_are_rejected_in_every_public_file() -> None:

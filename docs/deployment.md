@@ -5,19 +5,19 @@ TBX-Agent 是本地研究与信息辅助软件。本发布版仅含推理代码�
 
 ## 选择路径
 
-1. [快速部署](deployment/quickstart.md)：无模型 Demo，可验证界面、API、指南与模拟控制流。
+1. [快速部署](deployment/quickstart.md)：准备 Python 环境和外部模型目录，启动真实模型服务。
 2. [真实模型部署](deployment/inference_models.md)：安装外部视觉包，准备 D-FINE、PSPNet 和 MedGemma。
 3. [Docker](deployment/docker.md)：已准备真实运行工件后的进阶容器路径。
 4. [模型工件](deployment/model_artifacts.md)：目录与哈希边界。
 
-Demo 不产生真实模型结果。普通启动要求所选必需模型就绪，不把缺失权重静默替换为模拟结果。
+普通启动要求所选必需模型就绪，不把缺失权重静默替换为模拟结果。
 
 ## 运行边界
 
 默认 API / UI / llama.cpp 都只监听本机。模型缓存与运行数据分开，病例和报告写到外部数据根。
 当前仅协调单进程内同一用户/线程请求；不提供多副本共享锁、分布式队列或机构级高可用。
 
-Agent 使用 LangGraph 执行有界 Plan + ReAct，每步最多一个公开工具。
+Agent 使用 LangGraph 执行有界 ReAct，复杂问题按需规划，每步最多一个公开工具。
 上传解码和基础质控不调用模型。病例状态与审计由业务存储管理，未配置 durable checkpointer，
 因此不支持在进程重启后从图中间节点继续执行。
 

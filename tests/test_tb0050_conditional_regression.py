@@ -59,25 +59,26 @@ def _upload(service: TBXAgentService):
     )[0]
 
 
-def _omitted_condition_plan() -> dict:
-    """Simulate a 4B planner that understood the goals but omitted conditions."""
+def _explicit_condition_plan() -> dict:
+    """Test execution of explicit model conditions; semantic model accuracy is tested live."""
 
     return {
-        "goal": "先分类，异常时定位并说明下一步检查",
-        "steps": [
-            {"objective": "胸片分类", "evidence_need": "classification"},
-            {"objective": "定位主要候选区域", "evidence_need": "localization"},
-            {"objective": "查询下一步检查", "evidence_need": "tb_knowledge"},
+        "action": "plan",
+        "tasks": [
+            {"task": "classify_image", "when": "always"},
+            {"task": "show_detection_boxes", "when": "classification_abnormal"},
+            {"task": "search_tb_knowledge", "when": "classification_abnormal"},
         ],
     }
 
 
 def _tool(name: str) -> dict:
-    return {"tool": name, "direct_answer": None}
+    return {"action": "tool", "tool": name}
 
 
-def _answer(text: str) -> dict:
-    return {"tool": None, "direct_answer": text}
+def _answer(text: str, *evidence: str) -> dict:
+    return {"action": "answer", "answer_focus": "general", "evidence": list(evidence),
+            "answer": text}
 
 
 class _Scripted4BGenerator:
@@ -86,16 +87,11 @@ class _Scripted4BGenerator:
     model_digest = None
 
     def __init__(self, actions: list[dict]) -> None:
-        self.plans = deque([_omitted_condition_plan()])
-        self.actions = deque(actions)
+        self.actions = deque([_explicit_condition_plan(), *actions])
         self.action_requests: list[dict] = []
 
     def complete_structured(self, **kwargs):
-        if kwargs["schema_name"] == "tbx_plan_react_plan":
-            if not self.plans:
-                raise AssertionError("unexpected plan revision")
-            payload = self.plans.popleft()
-        elif kwargs["schema_name"] == "tbx_agent_tool_selection":
+        if kwargs["schema_name"] == "tbx_react_decision":
             self.action_requests.append(kwargs)
             if not self.actions:
                 raise AssertionError("unexpected ReAct step")
@@ -190,8 +186,9 @@ def _assert_public_conditional_plan(
         "若分类异常，查询下一步检查",
     ]
     assert result.execution_plan["plan_metadata"][
-        "explicit_abnormal_condition_applied"
-    ] is True
+        "rule_fallback_used"
+    ] is False
+    assert result.execution_plan["plan_metadata"]["planning_used"] is True
 
 
 def _public_response_text(response) -> str:
@@ -218,13 +215,18 @@ def test_tb0050_abnormal_runs_classify_then_localize_then_search(tmp_path: Path)
             _tool("classify_cxr"),
             _tool("localize_cxr"),
             _tool("search_tb_knowledge"),
-            _answer("已整合模型结果、候选区域和下一步检查。"),
+            _answer("已整合模型结果、候选区域和下一步检查。",
+                    "classification", "localization", "tb_knowledge"),
         ]
     )
 
     result = _run(service, case.case_id, generator, thread_id="tb0050-abnormal")
 
     _assert_public_conditional_plan(result)
+    assert not generator.actions
+    assert {request["schema_name"] for request in generator.action_requests} == {
+        "tbx_react_decision",
+    }
     assert result.execution_plan["tool_names"] == [
         "classify_cxr",
         "localize_cxr",
@@ -274,13 +276,14 @@ def test_tb0050_healthy_runs_only_classifier_and_skips_abnormal_branch(
     generator = _Scripted4BGenerator(
         [
             _tool("classify_cxr"),
-            _answer("模型更倾向于健康类，本轮无需定位候选区域。"),
+            _answer("模型更倾向于健康类，本轮无需定位候选区域。", "classification"),
         ]
     )
 
     result = _run(service, case.case_id, generator, thread_id="tb0050-healthy")
 
     _assert_public_conditional_plan(result)
+    assert not generator.actions
     assert result.execution_plan["tool_names"] == ["classify_cxr"]
     assert [step["status"] for step in result.execution_plan["final_plan"]["steps"]] == [
         "completed",
@@ -310,13 +313,15 @@ def test_tb0050_reuses_cached_abnormal_classification_without_rerunning_model(
         [
             _tool("localize_cxr"),
             _tool("search_tb_knowledge"),
-            _answer("已复用分类并整合定位和检查建议。"),
+            _answer("已复用分类并整合定位和检查建议。",
+                    "classification", "localization", "tb_knowledge"),
         ]
     )
 
     result = _run(service, case.case_id, generator, thread_id="tb0050-cached")
 
     _assert_public_conditional_plan(result, cached_classification=True)
+    assert not generator.actions
     assert result.execution_plan["initial_plan"]["steps"][0]["status"] == "completed"
     assert result.execution_plan["tool_names"] == [
         "localize_cxr",

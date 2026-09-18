@@ -86,7 +86,7 @@ _CLOSED_REASONING_BLOCK = re.compile(
 )
 _REASONING_PREFIX = re.compile(
     r"^[ \t]*(?:#{1,6}[ \t]*)?(?:\*{0,2})?"
-    r"(?:思考|分析|推理|思维过程|推理过程|thought|analysis|reasoning)"
+    r"(?:思考|分析|推理|思考过程|思维过程|推理过程|thought|analysis|reasoning)"
     r"(?:\*{0,2})?(?:[ \t]*[:：]|[ \t]+(?:用户|user|the[ \t]+user|we[ \t]+need|我需要))",
     re.IGNORECASE | re.MULTILINE,
 )

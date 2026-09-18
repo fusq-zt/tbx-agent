@@ -77,7 +77,11 @@ def _assert_langgraph(result, *, tools: list[str]) -> None:
     assert plan["tool_names"] == tools
     assert set(tools) <= PUBLIC_TOOLS
     trace = plan["graph_node_trace"]
-    assert trace[:3] == ["load_context", "plan", "decide"]
+    if plan["plan_metadata"]["rule_fallback_used"]:
+        assert (trace[:3] == ["load_context", "plan", "decide"]
+                or trace[:4] == ["load_context", "decide", "plan", "decide"])
+    else:
+        assert trace[:2] == ["load_context", "decide"]
     assert trace[-1] == "finalize"
     assert plan["hidden_reasoning_persisted"] is False
     assert result.trace.hidden_reasoning_persisted is False
@@ -470,18 +474,12 @@ class _WrongToolGenerator:
     model = "wrong-tool-test-model"
 
     def complete_structured(self, **kwargs):
-        if kwargs["schema_name"] == "tbx_plan_react_plan":
+        if kwargs["schema_name"] == "tbx_react_decision":
+            # This is a valid decision shape, but no image is loaded. The
+            # model cannot expand the runtime's state-dependent tool boundary.
             return (
                 json.dumps(
-                    {
-                        "goal": "回答结核检查问题",
-                        "steps": [
-                            {
-                                "objective": "查找结核知识依据",
-                                "evidence_need": "tb_knowledge",
-                            }
-                        ],
-                    },
+                    {"action": "tool", "tool": "classify_cxr"},
                     ensure_ascii=False,
                 ),
                 {"prompt_tokens": 12, "completion_tokens": 5},
@@ -536,6 +534,10 @@ def test_evidence_boundary_recovers_smear_guidance_when_model_cannot_select_tool
         "model_failed_authoritative_evidence_preserved"
     )
     assert result.execution_plan["plan_revisions"] == []
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is True
+    assert result.execution_plan["graph_node_trace"][:4] == [
+        "load_context", "decide", "plan", "decide",
+    ]
     assert result.response.citations
     assert result.response.claims
     assert "涂片阴性不能排除肺结核" in result.response.summary

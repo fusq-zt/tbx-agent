@@ -1,95 +1,77 @@
-# 软件测试与运行检查
+# 测试与结果
 
-本发布版保留软件回归和推理检查，不包含训练流程。报告需区分合成输入的软件契约、
-已准备模型的真实运行与独立数据上的性能；这些都不能直接当作临床验证。
+TBX-Agent 分别验证软件行为、LLM 工具编排和视觉模型性能，三类结果不能相互替代。
+仓库保留测试代码与固定场景；完整执行日志、病例产物和本地实验记录放在仓库外。
 
-## v0.1.0 本地验证记录
+## 软件验证
 
-本版在 Windows / Python 3.13.12 上完成以下检查：
+2026 年 9 月 18 日，发布目录轻量回归结果为 **1344 passed、2 skipped、1 deselected**，
+耗时约 120 秒；未纳入的 1 项为真实模型与 UI 集成测试。
+Ruff、源码发布清单校验、脚本语法检查与 wheel 构建均通过。
 
-| 检查 | 结果与范围 |
+此次使用 Windows / Python 3.13 的现有测试环境，没有重新安装并验收全部真实模型依赖，
+也没有重新运行视觉权重。因此本结果是发布源码的软件验证，不是完整部署环境的模型验收。
+
+| 层级 | 检查内容 |
 | --- | --- |
-| 完整 pytest | 1,153 passed、3 skipped，133.64 秒；跳过项为本机软链接权限、POSIX 可执行位检查、未显式启用的真实模型 UI 集成测试 |
-| Ruff 与源码发布检查 | 通过；检查敏感文件、训练代码和其他排除内容 |
-| 真实启动 Demo | 5 个 HTTP 端点返回 200，验证后已停止服务；视觉结果仍为模拟 |
-| 视觉包安装与输出一致性 | 已实际安装；合成图像上，CPU 推理的打包前后分类与最终检测输出完全一致 |
-| 新版依赖兼容性 | Transformers 5.10.1 / PyTorch 2.13.0；分类、检测与可选 MedSAM 均完成固定权重加载和合成输入推理 |
+| 单元与数据契约 | 解码、模型适配、空间关系、结构化响应 |
+| 工具与 Agent | 单步动作、条件、依赖、缓存、状态、预算与失败恢复 |
+| 病例和 API | 授权范围、线程隔离、换图、并发写入和公共字段 |
+| 回答与引用 | 证据组合、无依据声明拒绝、引用来源和部分结果 |
+| RAG | 检索适配、固定场景、来源过滤和缺证据处理 |
+| 发布 | 推理安装流程、权重外置、敏感文件排除和源码包完整性 |
 
-视觉输出一致性只验证推理工件导出和安装没有改变这次输入的结果，不是模型性能评估。
-Docker 未实际运行。Windows / Linux CI 在每次提交后运行，最新结果见
-[GitHub Actions](https://github.com/fusq-zt/tbx-agent/actions/workflows/ci.yml)。
+单元测试主要使用合成输入与替身，不能证明真实 LLM 一定选对动作。重型检查由 `real_rank03`、
+`requires_model`、`slow` 标记控制，不随轻量 CI 自动运行。
 
-## 覆盖层级
+## 真实本地 LLM 对话
 
-| 层级 | 检查内容 | 是否需要模型 |
-| --- | --- | --- |
-| 单元与 API | 解码、病例隔离、分类策略、报告、回执、失败关闭 | 默认不需要 |
-| Agent 轨迹 | 四工具 allowlist、每步 0/1 工具、证据复用、预算与失败恢复 | mock 默认不需要 |
-| 软件符合性 | 合成 DICOM、PSPNet / MedSAM DTO、二维空间计算、UI 门控 | 不需要 |
-| RAG fixture | 固定 corpus / queries / qrels、来源过滤、引用与无证据语义 | BM25 不需要 |
-| 真实运行 | 固定视觉工件、MedGemma 协议、实际加载与工具闭环 | 显式准备后执行 |
+配置为 MedGemma 1.5 4B Q4_K_M / llama.cpp，真实语言模型决策、合成视觉结果与本地 RAG。
+每轮上限为 5 次决策、4 次工具调用、3 次高成本视觉调用、10 单位工具成本。
 
-普通测试使用合成文本、临时图像和替身。不要把跳过模型测试的报告写成“真实模型已验证”。
+| 场景集合 | 轮数 | 工具序列匹配 | 工具与关键文字联合检查 |
+| --- | ---: | ---: | ---: |
+| 核心多轮回归 | 26 | 25/26 | 23/26 |
+| 扩展边界场景 | 24 | 21/24 | 19/24 |
+| 冻结后独立新增表述 | 12 | 12/12 | 12/12 |
+| 合计 | 62 | 58/62 | 54/62 |
 
-## 最小回归
+独立 12 轮是小规模新问法验收，不是外部数据集。文字检查仅覆盖关键事实，存在同义措辞误判；
+工具匹配也不等于整段回答质量。状态追问误判、额外检索和问法敏感仍是已知限制。
+这批结果不衡量分类、检测或分割准确率。
 
-在虚拟环境中运行：
+## 视觉模型结果
+
+以下来自项目提供的 **coda 平台 TBX11K 官方测试集**结果，未在此次软件整理中重新运行。
+
+| 任务 | 指标 |
+| --- | --- |
+| 分类 | Accuracy 91.31%，AUC 97.11%，Sensitivity 88.25%，Specificity 94.76% |
+| 类别无关检测 | AP50 71.11，AP75 30.58，AP@[0.50:0.95] 35.38 |
+| 活动性结核检测 | AP50 62.39，AP75 26.53，AP@[0.50:0.95] 31.21 |
+| 潜伏性结核检测 | AP50 8.62，AP75 2.28，AP@[0.50:0.95] 3.40 |
+
+类别无关检测较提供的历史榜单最佳值分别高 9.37、10.94、8.06 个百分点，不能据此声称当前榜单第一。
+分类只报告自身结果，潜伏性类别不概括为全面领先。没有独立分割质量指标。
+测试集只用于最终评价，不用于模型或阈值选择。
+
+## 复现入口
+
+安装环境后在项目根目录运行：
 
 ```bash
-python -m pip install -e ".[ui,dev]"
+python -m pip install -e '.[dev,ui,ingestion,dicom]'
 python -m ruff check src ui tests scripts
-python -m pytest -m "not real_rank03 and not requires_model and not slow"
-python scripts/build_rag_index.py --dry-run
+python -m pytest -m 'not integration and not real_rank03 and not requires_model and not slow'
+python scripts/build_source_release.py --dry-run
 ```
 
-具体语义要求见 [Agent 轨迹评测](agent_trajectory_evaluation.md)。
-合成测试可检查适配器输入输出契约，但不测量真实分类、检测或分割质量。
-
-## 保存报告
-
-Linux 示例会创建仓库外的新运行目录；Windows 在 `$env:TBX_AGENT_DATA_ROOT` 下选择新目录，
-向各命令传相同参数即可。
+准备并启动本地语言模型后，可以运行固定合成对话。脚本继承现有模型配置，在运行目录创建独立病例库，
+不使用现有用户病例，不自动下载模型：
 
 ```bash
-export TBX_AGENT_DATA_ROOT="${TBX_AGENT_DATA_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/tbx-agent}"
-RUN_DIR="$TBX_AGENT_DATA_ROOT/evaluation/$(date -u +%Y%m%dT%H%M%SZ)"
-mkdir -p "$RUN_DIR"
-python scripts/evaluate_agent_runtime.py --runtime-mode mock --output "$RUN_DIR/trajectory.json"
-python scripts/evaluate_rag_retrieval.py \
-  --suite-config evaluation/retrieval/smoke_v5/config.json \
-  --modes bm25 --output "$RUN_DIR/bm25.json"
-tbx-agent-system-bench \
-  --config evaluation/system_bench_config_v1_6.json --output-dir "$RUN_DIR/system"
-tbx-agent-software-conformance \
-  --config evaluation/software_conformance_config_v1.json --output-dir "$RUN_DIR/software"
+python scripts/evaluate_conversations.py --scenarios evaluation/suites/conversation_v4_holdout/dialogues.json --output-label conversations_acceptance
 ```
 
-每次使用新目录并保留失败报告。系统 benchmark 绑定源码、策略、知识和固定 suite；
-software-conformance 检查合成契约，不加载 PSPNet / MedSAM。
-RAG 保存检索模式、配置和身份，并把成功、失败与中断记入外部台账，详见 [RAG](retrieval.md)。
-
-fixture 是工程回归材料，不是医学专家金标准，不能用于选择模型、阈值或临床策略。
-比较时应固定 suite 与 corpus 身份；不能把历史结果写成本次发布重新运行的结果。
-
-默认部署策略为 `configs/fusion_policy.json`。
-`fusion_policy_argmax_v2.json` 与 `fusion_policy_sens98_legacy.json` 保留为历史兼容回归材料；
-其历史指标和报告引用不构成发布包性能背书，也不是建议部署者切换的策略。
-
-## 真实运行
-
-先完成 [模型部署](deployment/inference_models.md) 与 `/readyz` 检查。
-评测脚本不自动下载安装模型。对已经运行的服务，可显式执行固定对话矩阵：
-
-```bash
-python scripts/evaluate_medical_dialogue_runtime.py \
-  --base-url http://127.0.0.1:8000 \
-  --provider local_medgemma \
-  --output "$RUN_DIR/medical-dialogue.json"
-```
-
-runner 每例使用独立 thread，检查实际响应、回执、引用与错误状态；不会启动或停止服务，
-也不从命令行接收 API key。输出文件必须是新文件。
-
-HTTP 2xx、模型能加载、张量一致或输出形状正确，不等于回答契约全部通过或模型性能达标。
-源码、模型、配置与知识身份应和报告一起保留；无法测得显存等字段时记录原因。
-模型更新需要新的运行证据，不继承另一组权重的性能数字。
+CI 配置见[自动检查](../.github/workflows/ci.yml)，状态见 [GitHub Actions](https://github.com/fusq-zt/tbx-agent/actions)。
+本机验证不等于 Docker 或所有平台均已部署验证。结果限于上述数据与软件范围，不构成临床验证。

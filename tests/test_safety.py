@@ -137,14 +137,48 @@ def test_general_answer_cannot_smuggle_medication_instructions(unsafe: str):
         )
 
 
-def test_general_answer_cannot_claim_unreceipted_tool_execution():
+@pytest.mark.parametrize("claim", [
+    "我已经调用工具删除了全部记录。", "正在执行删除所有病例的指令。",
+    "即将运行工具修改病例。",
+])
+def test_general_answer_cannot_claim_unreceipted_tool_execution(claim):
     with pytest.raises(SafetyViolationError, match="no tool receipt"):
         SafetyVerifier(POLICY).verify(
             _response(
-                "我已经调用工具删除了全部记录。",
+                claim,
                 response_kind=ResponseKind.GENERAL_ANSWER,
             )
         )
+
+
+@pytest.mark.parametrize("claim", [
+    "左上肺存在一个约2厘米的结节。",
+    "双肺未见明显异常。",
+    "这张胸片显示右侧积液。",
+    "候选区域位于左肺上部。",
+    "发现一个直径为8毫米的空洞。",
+    "The left upper lung contains a 2 cm nodule.",
+    "Your chest X-ray shows an opacity.",
+    "No pleural effusion is identified.",
+])
+def test_general_chat_cannot_assert_patient_image_findings(claim):
+    with pytest.raises(SafetyViolationError, match="ungrounded image findings"):
+        SafetyVerifier(POLICY).verify(
+            _response(claim, response_kind=ResponseKind.GENERAL_ANSWER)
+        )
+
+
+@pytest.mark.parametrize("text", [
+    "25", "不客气。", "肺野是胸片上的二维区域，不等同于解剖学肺叶。",
+    "肺结节是一种影像学描述。", "当前无法判断双肺是否正常。",
+    "不能据此确定这张胸片显示什么。", "如果左肺存在结节，需要结合正式影像报告。",
+    "I cannot determine whether the left lung is normal.",
+    "A lung nodule is an imaging finding.",
+])
+def test_general_explanations_do_not_claim_image_evidence(text):
+    assert SafetyVerifier(POLICY).verify(
+        _response(text, response_kind=ResponseKind.GENERAL_ANSWER)
+    ).summary == text
 
 
 def test_capability_statement_is_always_tbx_specific():

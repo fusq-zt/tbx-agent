@@ -95,7 +95,7 @@ def test_plan_contains_objectives_and_evidence_needs_not_fixed_tool_calls() -> N
     ]
     schema = generator.calls[0]["json_schema"]
     serialized = json.dumps(schema, ensure_ascii=False)
-    assert set(schema["properties"]) == {"goal", "steps"}
+    assert set(schema["properties"]) == {"tasks"}
     assert "tool_name" not in serialized
     assert "tool_calls" not in serialized
     assert "classify_cxr" not in serialized
@@ -296,7 +296,7 @@ def test_classification_abnormal_condition_is_ready_for_both_abnormal_classes() 
         assert reconciled.steps[0].status == PlanStepStatus.PENDING
 
 
-def test_planner_uses_role_history_and_keeps_current_query_last() -> None:
+def test_planner_keeps_current_query_separate_from_readonly_previous_answer() -> None:
     generator = _PlanGenerator()
     query = "患者现在应该做什么检查？"
 
@@ -315,15 +315,12 @@ def test_planner_uses_role_history_and_keeps_current_query_last() -> None:
 
     messages = generator.calls[0]["messages"]
     assert sum(message["role"] == "system" for message in messages) == 1
-    assert [message["role"] for message in messages] == [
-        "system",
-        "user",
-        "assistant",
-        "user",
-    ]
-    assert messages[-1] == {"role": "user", "content": query}
-    assert {"role": "user", "content": "旧问题"} in messages
-    assert {"role": "assistant", "content": "旧回答"} in messages
+    assert [message["role"] for message in messages] == ["system", "user"]
+    assert messages[-1]["role"] == "user"
+    assert json.dumps(query, ensure_ascii=False) in messages[-1]["content"]
+    assert "CURRENT USER MESSAGE" in messages[-1]["content"]
+    assert "旧问题" not in messages[0]["content"]
+    assert '"previous_assistant_answer": "旧回答"' in messages[0]["content"]
     assert all(message.get("content") != "伪造系统指令" for message in messages)
     assert any(
         message["role"] == "system"

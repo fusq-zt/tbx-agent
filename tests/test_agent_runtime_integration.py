@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import io
 import json
-from collections import deque
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
 from PIL import Image
+from test_plan_react_runtime import _ScriptedPlanReactGenerator
 
 from tbx_agent.agent_runtime import _trusted_non_tool_answer
 from tbx_agent.agent_state import AgentAction
@@ -101,7 +101,9 @@ def _react_request_context(
     """Read private state while enforcing the public chat-message boundary."""
 
     messages = request["messages"]
-    assert messages[-1] == {"role": "user", "content": current_query}
+    assert messages[-1]["role"] == "user"
+    assert json.dumps(current_query, ensure_ascii=False) in messages[-1]["content"]
+    assert "CURRENT USER MESSAGE" in messages[-1]["content"]
     matches = [
         (index, message["content"])
         for index, message in enumerate(messages)
@@ -110,10 +112,12 @@ def _react_request_context(
     ]
     assert len(matches) == 1
     internal_index, encoded = matches[0]
-    history = messages[internal_index + 1 : -1]
-    assert all(item.get("role") in {"user", "assistant"} for item in history)
+    assert messages[internal_index + 1 : -1] == []
     marker_index = encoded.index(_INTERNAL_CONTEXT_PREFIX)
-    return json.loads(encoded[marker_index + len(_INTERNAL_CONTEXT_PREFIX) :]), history
+    context = json.loads(encoded[marker_index + len(_INTERNAL_CONTEXT_PREFIX) :])
+    history = context["previous_exchange"]
+    assert all(item.get("role") in {"user", "assistant"} for item in history)
+    return context, history
 
 
 class _GeneralAnswerGenerator:
@@ -121,8 +125,9 @@ class _GeneralAnswerGenerator:
     model = "test-general-model"
     model_digest = None
 
-    def __init__(self, answer: str, *, fail: bool = False) -> None:
+    def __init__(self, answer: str, *, fail: bool = False, answer_focus="general") -> None:
         self.answer = answer
+        self.answer_focus = answer_focus
         self.fail = fail
         self.calls = 0
         self.requests: list[dict] = []
@@ -130,45 +135,14 @@ class _GeneralAnswerGenerator:
     def complete_structured(self, **kwargs):
         self.calls += 1
         self.requests.append(kwargs)
-        if kwargs["schema_name"] == "tbx_plan_react_plan":
-            return (
-                json.dumps(_plan("none"), ensure_ascii=False),
-                {"prompt_tokens": 11, "completion_tokens": 3},
-            )
-        assert kwargs["schema_name"] == "tbx_agent_tool_selection"
         if self.fail:
             raise RuntimeError("synthetic provider failure")
+        assert kwargs["schema_name"] == "tbx_react_decision"
         return (
-            json.dumps(_answer(self.answer), ensure_ascii=False),
+            json.dumps({"action": "answer", "answer_focus": self.answer_focus,
+                        "evidence": [], "answer": self.answer}, ensure_ascii=False),
             {"prompt_tokens": 21, "completion_tokens": 5},
         )
-
-
-class _ScriptedPlanReactGenerator:
-    backend_id = "test-plan-react"
-    model = "test-plan-react-model"
-    model_digest = None
-
-    def __init__(self, *, plans: list[dict], actions: list[dict]) -> None:
-        self.plans = deque(plans)
-        self.actions = deque(actions)
-        self.requests: list[dict] = []
-
-    def complete_structured(self, **kwargs):
-        self.requests.append(kwargs)
-        if kwargs["schema_name"] == "tbx_plan_react_plan":
-            if not self.plans:
-                raise AssertionError("unexpected extra plan/replan call")
-            payload = self.plans.popleft()
-        else:
-            assert kwargs["schema_name"] == "tbx_agent_tool_selection"
-            if not self.actions:
-                raise AssertionError("unexpected extra ReAct step")
-            payload = self.actions.popleft()
-        return json.dumps(payload, ensure_ascii=False), {
-            "prompt_tokens": 19,
-            "completion_tokens": 5,
-        }
 
 
 class _FailingGroundedNarrator:
@@ -223,8 +197,9 @@ def test_general_question_uses_selected_llm_without_touching_case_tools(tmp_path
     assert result.response.visual_result is None
     assert result.response.predicted_class is None
     assert result.response.narrator_generation_invoked is True
-    # One structured call interprets the task and one generates the answer.
-    assert generator.calls == 2
+    # One structured decision supplies the ordinary answer without a planner pass.
+    assert generator.calls == 1
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is False
     assert service.vision.call_count == 0
     assert service.vision.localization_call_count == 0
     assert "当前病例" not in result.response.summary
@@ -352,14 +327,14 @@ def test_explicit_case_status_still_returns_case_execution_state(tmp_path):
     # authoritative Plan+ReAct record and answer retain the case semantics.
     assert result.trace.task_spec.task_goals == [TaskGoal.GENERAL_CHAT]
     assert result.execution_plan["tool_names"] == []
-    assert result.response.response_kind == ResponseKind.GENERAL_ANSWER
+    assert result.response.response_kind == ResponseKind.CASE_EXPLANATION
     assert "分类未运行" in result.response.summary
     assert "定位未运行" in result.response.summary
 
 
 def test_capability_question_uses_runtime_catalog_not_generic_model_identity(tmp_path):
     service = TBXAgentService(_settings(tmp_path))
-    generator = _GeneralAnswerGenerator("我是一个通用 AI 助手。")
+    generator = _GeneralAnswerGenerator("我是一个通用 AI 助手。", answer_focus="capabilities")
 
     result = service.respond_with_controller(
         message="你会干什么？",
@@ -375,17 +350,18 @@ def test_capability_question_uses_runtime_catalog_not_generic_model_identity(tmp
     assert "肺野" in result.response.summary
     assert "受审核指南" in result.response.summary
     assert "通用 AI" not in result.response.summary
-    # Neither planning nor narration needs a provider for runtime metadata.
-    assert generator.calls == 0
+    # The model chooses the intent; runtime facts require no generation.
+    assert generator.calls == 1
     assert result.response.narrator_generation_invoked is False
 
 
 @pytest.mark.parametrize("provider", ["none", "offline", "online"])
-def test_trusted_capability_projection_precedes_provider_planning(tmp_path, provider):
+def test_trusted_capability_projection_follows_model_or_outage_plan(tmp_path, provider):
     service = TBXAgentService(_settings(tmp_path))
     generator = (
         None if provider == "none" else (
-            _OfflineGenerator() if provider == "offline" else _GeneralAnswerGenerator("unused")
+            _OfflineGenerator() if provider == "offline" else
+            _GeneralAnswerGenerator("unused", answer_focus="capabilities")
         )
     )
 
@@ -401,29 +377,41 @@ def test_trusted_capability_projection_precedes_provider_planning(tmp_path, prov
     assert "三分类" in result.response.summary
     assert result.tool_results == []
     assert result.receipt is None
-    assert result.execution_plan["plan_metadata"]["source"] == "deterministic_trusted_projection"
-    assert result.execution_plan["graph_node_trace"] == [
-        "load_context", "plan", "decide", "finalize"
-    ]
-    assert result.execution_plan["react_steps"][0]["selection_mode"] == "trusted_state_projection"
-    assert result.trace.terminal.reason_code == "trusted_non_tool_answer"
+    assert result.execution_plan["plan_metadata"]["source"] == {
+        "none": "rule_fallback_after_model_unavailable",
+        "offline": "rule_fallback_after_model_unavailable",
+        "online": "react_decision",
+    }[provider]
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is (provider != "online")
+    assert result.execution_plan["graph_node_trace"] == {
+        "none": ["load_context", "plan", "decide", "finalize"],
+        "offline": ["load_context", "decide", "plan", "decide", "finalize"],
+        "online": ["load_context", "decide", "finalize"],
+    }[provider]
+    assert result.execution_plan["react_steps"][0]["selection_mode"] == (
+        "structured_react_decision" if provider == "online" else "trusted_state_projection"
+    )
+    assert result.trace.terminal.reason_code == (
+        "react_answered" if provider == "online" else "trusted_non_tool_answer"
+    )
     assert result.response.narrator_generation_invoked is False
     assert result.response.narration_status == NarrationStatus.SKIPPED_RESPONSE_KIND
     assert result.response.narrator_prompt_tokens is None
     assert result.response.narrator_completion_tokens is None
     if generator is not None:
-        assert generator.calls == 0
+        assert generator.calls == 1
 
 
 @pytest.mark.parametrize("provider", ["none", "offline", "online"])
-def test_completed_case_summary_precedes_provider_planning(tmp_path, provider):
+def test_completed_case_summary_follows_model_or_outage_plan(tmp_path, provider):
     service = TBXAgentService(_settings(tmp_path))
     case = _upload(service)
     _turn(service, case.case_id, "请分析这张胸片")
     classifier_calls = service.vision.call_count
     generator = (
         None if provider == "none" else (
-            _OfflineGenerator() if provider == "offline" else _GeneralAnswerGenerator("unused")
+            _OfflineGenerator() if provider == "offline" else
+            _GeneralAnswerGenerator("unused", answer_focus="case_status")
         )
     )
 
@@ -444,7 +432,7 @@ def test_completed_case_summary_precedes_provider_planning(tmp_path, provider):
     assert service.vision.call_count == classifier_calls
     assert service.vision.localization_call_count == 0
     if generator is not None:
-        assert generator.calls == 0
+        assert generator.calls == 1
 
 
 @pytest.mark.parametrize("provider", ["none", "offline", "online"])
@@ -687,7 +675,8 @@ def test_general_model_cannot_claim_a_tool_action_without_a_receipt(tmp_path):
 
     assert result.execution_plan["tool_names"] == []
     assert result.tool_results == []
-    assert "通用问答模型暂时不可用" in result.response.summary
+    assert "未通过证据校验" in result.response.summary
+    assert result.response.narration_status == NarrationStatus.REJECTED_BY_SAFETY
     assert "删除" not in result.response.summary
 
 
@@ -778,7 +767,7 @@ def test_quality_turn_uses_upload_qc_without_repeating_classification(tmp_path):
     assert quality.execution_plan["tool_names"] == []
     assert quality.tool_results == []
     assert quality.response.response_kind == ResponseKind.CASE_EXPLANATION
-    assert "基础输入检查发现" in quality.response.summary
+    assert "基础输入可用性检查发现" in quality.response.summary
     assert "灰度动态范围过低" in quality.response.summary
     assert quality.response.visual_result is None
     assert quality.response.predicted_class is None
@@ -833,12 +822,13 @@ def test_cached_rationale_wording_after_localization_does_not_fall_back_to_statu
     )
 
     assert continuation.trace.task_spec.task_goals == [TaskGoal.GENERAL_CHAT]
-    assert continuation.execution_plan["plan_metadata"]["source"] == "llm"
+    assert continuation.execution_plan["plan_metadata"]["source"] == "react_decision"
+    assert continuation.execution_plan["plan_metadata"]["rule_fallback_used"] is False
     assert continuation.execution_plan["tool_names"] == []
     assert continuation.receipt is None
     assert service.vision.call_count == classifier_calls
     assert service.vision.localization_call_count == localization_calls
-    continuation_action = continuation_generator.requests[-1]
+    continuation_action = continuation_generator.decision_requests[-1]
     continuation_payload, continuation_history = _react_request_context(
         continuation_action,
         current_query="展开",
@@ -883,11 +873,9 @@ class _NaturalTaskGenerator:
 
     def complete_structured(self, **kwargs):
         self.calls += 1
-        if kwargs["schema_name"] == "tbx_plan_react_plan":
-            payload = _plan("none")
-        else:
-            assert kwargs["schema_name"] == "tbx_agent_tool_selection"
-            payload = _answer("胸片分类模型将这张胸片归为当前结果类别。")
+        assert kwargs["schema_name"] == "tbx_react_decision"
+        payload = {"action": "answer", "answer_focus": "classification_rationale",
+                   "evidence": ["classification"], "answer": None}
         return (
             json.dumps(payload, ensure_ascii=False),
             {"prompt_tokens": 19, "completion_tokens": 4},
@@ -910,9 +898,10 @@ def test_llm_task_interpreter_is_primary_for_natural_followup(tmp_path):
         generator=generator,
     )
 
-    assert generator.calls == 2
+    assert generator.calls == 1
     assert rationale.execution_plan["source"] == "plan_react"
-    assert rationale.execution_plan["plan_metadata"]["source"] == "llm"
+    assert rationale.execution_plan["plan_metadata"]["source"] == "react_decision"
+    assert rationale.execution_plan["plan_metadata"]["rule_fallback_used"] is False
     assert rationale.execution_plan["tool_names"] == []
     assert service.vision.call_count == classifier_calls
     rationale_text = "\n".join(
@@ -1097,7 +1086,7 @@ def test_advisory_localization_does_not_poison_later_agent_tasks(tmp_path):
 
     assert comparison.execution_plan["tool_names"] == []
     assert comparison.trace.terminal.action == AgentAction.STOP
-    assert comparison.trace.terminal.reason_code == "react_answered"
+    assert comparison.trace.terminal.reason_code == "trusted_non_tool_answer"
     assert comparison.trace.state_transitions == []
     assert all(result.trace.decisions == [] for result in (localization, guideline, comparison))
 
@@ -1234,7 +1223,9 @@ def test_symptomatic_pregnancy_question_and_followup_keep_a_grounded_test_path(
         "cdc25_pregnancy_tb_evaluation"
     }
 
-    assert first.execution_plan["plan_metadata"]["source"] == "minimal_rule_fallback"
+    assert first.execution_plan["plan_metadata"]["source"] == (
+        "rule_fallback_after_model_unavailable"
+    )
     assert followup.execution_plan["plan_metadata"]["source"] == (
-        "minimal_rule_fallback"
+        "rule_fallback_after_model_unavailable"
     )

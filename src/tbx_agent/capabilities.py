@@ -320,8 +320,8 @@ def build_capability_snapshot(service: Any) -> CapabilitySnapshot:
                 required=True,
                 implementation=str(orchestration["policy_id"]),
                 detail=(
-                    "LangGraph Plan + ReAct; native tool_calls first with strict JSON "
-                    "Schema fallback; one model-visible tool per decision; SQLiteStore "
+                    "LangGraph ReAct-first with optional plans; structured semantic actions; "
+                    "one evidence tool per decision; rules only after model failure; SQLiteStore "
                     "owns business state and no durable graph checkpointer is configured"
                 ),
                 loaded=True,

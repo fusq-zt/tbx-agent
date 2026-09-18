@@ -23,7 +23,6 @@ from langgraph.runtime import Runtime
 from .llm.tool_calling import (
     HighLevelToolName,
     HighLevelToolSelection,
-    ToolSelectionMode,
 )
 from .plan_react import (
     PLAN_REACT_POLICY_ID,
@@ -57,16 +56,15 @@ def plan_react_provenance() -> dict[str, object]:
         "framework": "langgraph",
         "policy_id": PLAN_REACT_POLICY_ID,
         "controller_policy_id": PLAN_REACT_POLICY_ID,
-        "strategy": "plan_react",
+        "strategy": "react_first_optional_plan",
         "graph_nodes": list(LANGGRAPH_NODE_NAMES),
         "model_visible_tools": [item.value for item in HighLevelToolName],
         "tool_selection_priority": [
-            ToolSelectionMode.NATIVE_TOOL_CALL.value,
-            ToolSelectionMode.JSON_SCHEMA_FALLBACK.value,
+            "structured_react_decision",
         ],
         "tool_calling": {
-            "preferred": "openai_compatible_native_tool_calls",
-            "fallback": "strict_json_schema",
+            "preferred": "strict_json_schema_decision",
+            "fallback": "rule_plan_after_model_error",
         },
         "action_granularity": "one_tool_per_react_decision",
         # Retain the old key with its literal meaning for manifest consumers.
@@ -74,10 +72,12 @@ def plan_react_provenance() -> dict[str, object]:
         "replans_after_each_observation": False,
         "decides_after_each_observation": True,
         "replan_policy": {
-            "trigger": "failed_tool_observation",
+            "trigger": "explicit_failure_or_missing_obligation",
             "max_plan_revisions": 2,
         },
-        "trusted_projection_before_model_planning": True,
+        "trusted_projection_before_model_planning": False,
+        "intent_authority": "model_first_rule_fallback",
+        "planning_policy": "model_requested_complex_tasks_only",
         "bounded": True,
         "hidden_reasoning_persisted": False,
         "durable_langgraph_checkpointer": False,
@@ -114,6 +114,15 @@ class PlanReActGraphState(PlanReActGraphInput, total=False):
     """Typed, bounded state shared by all Plan + ReAct graph nodes."""
 
     context_loaded: bool
+    react_first: bool
+    rule_fallback: bool
+    pending_plan_tasks: list[Any] | None
+    decision_feedback: list[dict[str, Any]]
+    answer_evidence: list[Any]
+    answer_focus: str
+    resolved_response: Any
+    resolved_cached_evidence: list[str]
+    decision_usage: list[dict[str, Any]]
     request_id: str
     trace_id: str
     run_id: str
@@ -214,7 +223,7 @@ def _load_context(
 ) -> dict[str, Any]:
     update = _invoke_domain_node("load_context", state, runtime)
     update.setdefault("context_loaded", True)
-    update.setdefault("next_node", GraphRoute.PLAN)
+    update.setdefault("next_node", GraphRoute.DECIDE)
     update.setdefault("react_iteration", 0)
     return update
 
@@ -316,8 +325,8 @@ def _validated_route(
 def _after_load(state: PlanReActGraphState) -> str:
     return _validated_route(
         state,
-        allowed=frozenset({GraphRoute.PLAN, GraphRoute.FINALIZE}),
-        default=GraphRoute.PLAN,
+        allowed=frozenset({GraphRoute.PLAN, GraphRoute.DECIDE, GraphRoute.FINALIZE}),
+        default=GraphRoute.DECIDE,
     )
 
 
@@ -333,7 +342,8 @@ def _after_decide(state: PlanReActGraphState) -> str:
     return _validated_route(
         state,
         allowed=frozenset(
-            {GraphRoute.EXECUTE_TOOL, GraphRoute.REPLAN, GraphRoute.FINALIZE}
+            {GraphRoute.EXECUTE_TOOL, GraphRoute.PLAN, GraphRoute.DECIDE,
+             GraphRoute.REPLAN, GraphRoute.FINALIZE}
         ),
         default=GraphRoute.FINALIZE,
     )
@@ -376,7 +386,8 @@ def build_plan_react_workflow() -> StateGraph:
     builder.add_conditional_edges(
         "load_context",
         _after_load,
-        {GraphRoute.PLAN.value: "plan", GraphRoute.FINALIZE.value: "finalize"},
+        {GraphRoute.PLAN.value: "plan", GraphRoute.DECIDE.value: "decide",
+         GraphRoute.FINALIZE.value: "finalize"},
     )
     builder.add_conditional_edges(
         "plan",
@@ -387,6 +398,8 @@ def build_plan_react_workflow() -> StateGraph:
         "decide",
         _after_decide,
         {
+            GraphRoute.PLAN.value: "plan",
+            GraphRoute.DECIDE.value: "decide",
             GraphRoute.EXECUTE_TOOL.value: "execute_tool",
             GraphRoute.REPLAN.value: "replan",
             GraphRoute.FINALIZE.value: "finalize",

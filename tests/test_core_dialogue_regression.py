@@ -50,6 +50,14 @@ class _OverauthorizingTaskGenerator:
     model = "test-model"
 
     def complete_structured(self, **kwargs):
+        if kwargs["schema_name"] == "tbx_react_decision":
+            # The model is not allowed to choose another case or supply tool
+            # arguments. This intentionally violates that boundary, rather
+            # than relying on the retired plan-based tool allowlist.
+            return json.dumps({
+                "action": "tool", "tool": "localize_cxr",
+                "case_id": "foreign-case-selected-by-model",
+            }), {"prompt_tokens": 12, "completion_tokens": 8}
         if kwargs["schema_name"] == "tbx_agent_tool_selection":
             return (
                 json.dumps(
@@ -116,7 +124,11 @@ def _assert_langgraph_execution(result, *, used_tools: list[str]) -> None:
     assert plan["framework"] == "langgraph"
     assert plan["tool_names"] == used_tools
     node_trace = plan["graph_node_trace"]
-    assert node_trace[:3] == ["load_context", "plan", "decide"]
+    if plan["plan_metadata"]["rule_fallback_used"]:
+        assert (node_trace[:3] == ["load_context", "plan", "decide"]
+                or node_trace[:4] == ["load_context", "decide", "plan", "decide"])
+    else:
+        assert node_trace[:2] == ["load_context", "decide"]
     assert node_trace[-1] == "finalize"
     assert plan["hidden_reasoning_persisted"] is False
 
@@ -395,7 +407,7 @@ def test_terse_guideline_followup_keeps_the_last_successful_query_dimensions(
     assert stored.recent_guideline_task.subtopic == subtopic
 
 
-def test_llm_cannot_overauthorize_localization_for_classification_query(
+def test_llm_cannot_supply_a_foreign_case_for_localization(
     tmp_path: Path,
 ) -> None:
     settings = _settings(tmp_path)
@@ -426,14 +438,16 @@ def test_llm_cannot_overauthorize_localization_for_classification_query(
     assert result.receipt.model_tool_name == "classify_cxr"
     assert result.receipt.selection_source == "plan_evidence_fallback"
     assert result.execution_plan["plan_revisions"] == []
-    assert result.trace.terminal.reason_code == "action_guard_rejected"
-    rejected = [
-        step
-        for step in result.execution_plan["react_steps"]
-        if step["status"] == "rejected_by_state_or_plan"
+    # The new decision contract rejects model-authored case IDs before they
+    # can become a pending invocation. Rule recovery remains bound to the
+    # actual authorized case and preserves its successful evidence.
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is True
+    assert result.execution_plan["graph_node_trace"][:4] == [
+        "load_context", "decide", "plan", "decide",
     ]
-    assert rejected
-    assert {step["tool_name"] for step in rejected} == {"localize_cxr"}
+    assert result.trace.terminal.reason_code == "react_answered_with_evidence_fallback"
+    assert any(step["status"] == "selector_failed_plan_enforced"
+               for step in result.execution_plan["react_steps"])
     assert all(
         item.receipt.model_tool_name != "localize_cxr"
         for item in result.tool_results

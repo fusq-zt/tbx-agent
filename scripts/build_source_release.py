@@ -32,7 +32,6 @@ PUBLIC_ROOT_FILES = frozenset(
         ".env.example",
         ".gitattributes",
         ".gitignore",
-        "CHANGELOG.md",
         "CITATION.cff",
         "CODE_OF_CONDUCT.md",
         "CONTRIBUTING.md",
@@ -60,6 +59,12 @@ PUBLIC_DIRS = frozenset(
     }
 )
 
+# These two user-approved product screenshots are the entire image exception.
+# Patient images, arbitrary screenshots and binary model assets remain denied.
+PUBLIC_IMAGE_FILES = frozenset(
+    {"docs/images/chest-analysis.png", "docs/images/grounded-qa.png"}
+)
+
 DEPLOYMENT_RELEASE_FILES = frozenset(
     {
         ".dockerignore",
@@ -75,8 +80,6 @@ DEPLOYMENT_RELEASE_FILES = frozenset(
         "docs/deployment/quickstart.md",
         "docs/deployment/qwen_runtime.md",
         "docs/deployment/inference_models.md",
-        "docs/deployment/publishing.md",
-        "docs/deployment/source_release.md",
         "docs/anatomy_spatial_evidence.md",
         "docs/medsam_refinement.md",
         "configs/app.yaml",
@@ -95,6 +98,7 @@ DEPLOYMENT_RELEASE_FILES = frozenset(
         "scripts/build_rag_index.py",
         "scripts/check_setup.py",
         "scripts/evaluate_agent_runtime.py",
+        "scripts/evaluate_conversations.py",
         "scripts/evaluate_medical_dialogue_runtime.py",
         "scripts/evaluate_rag_retrieval.py",
         "scripts/smoke_medsam_refinement.py",
@@ -117,6 +121,7 @@ PUBLIC_SCRIPT_FILES = frozenset(
         "scripts/build_rag_index.py",
         "scripts/check_setup.py",
         "scripts/evaluate_agent_runtime.py",
+        "scripts/evaluate_conversations.py",
         "scripts/evaluate_medical_dialogue_runtime.py",
         "scripts/evaluate_rag_retrieval.py",
         "scripts/smoke_medsam_refinement.py",
@@ -131,6 +136,9 @@ PUBLIC_SCRIPT_FILES = frozenset(
 )
 PUBLIC_EVALUATION_FILES = frozenset(
     {
+        "evaluation/suites/conversation_v3/dialogues.json",
+        "evaluation/suites/conversation_v4/dialogues.json",
+        "evaluation/suites/conversation_v4_holdout/dialogues.json",
         "evaluation/cases.jsonl",
         "evaluation/eval_config.json",
         "evaluation/fixtures/medical_dialogue_qa_v1.json",
@@ -231,6 +239,8 @@ INTERNAL_RESEARCH_FILES = frozenset(
         "src/tbx_agent/evaluation/tbx11k_validation.py",
         "tests/test_external_rank03_archives.py",
         "tests/test_narrator_precision_pair.py",
+        "tests/test_rank03_training.py",
+        "tests/test_rank03_recording.py",
         "tests/test_shenzhen_classifier_half_split.py",
         "tests/test_shenzhen_classifier_panel.py",
         "tests/test_shenzhen_detector_sweep.py",
@@ -240,7 +250,6 @@ INTERNAL_RESEARCH_FILES = frozenset(
 PUBLIC_DOC_FILES = frozenset(
     {
         "docs/api.md",
-        "docs/agent_trajectory_evaluation.md",
         "docs/anatomy_spatial_evidence.md",
         "docs/architecture.md",
         "docs/deployment.md",
@@ -251,10 +260,7 @@ PUBLIC_DOC_FILES = frozenset(
         "docs/deployment/quickstart.md",
         "docs/deployment/qwen_runtime.md",
         "docs/deployment/inference_models.md",
-        "docs/deployment/publishing.md",
-        "docs/deployment/source_release.md",
         "docs/evaluation.md",
-        "docs/guideline_audit.md",
         "docs/knowledge_ingestion.md",
         "docs/medsam_refinement.md",
         "docs/production_security.md",
@@ -461,7 +467,12 @@ REQUIRED_RELEASE_FILES = (
             "evaluation/suites/trajectory_v3/README.md",
             "evaluation/suites/trajectory_v3/cases.jsonl",
             "evaluation/suites/trajectory_v3/manifest.json",
-            "docs/agent_trajectory_evaluation.md",
+            "evaluation/suites/conversation_v3/dialogues.json",
+            "evaluation/suites/conversation_v4/dialogues.json",
+            "evaluation/suites/conversation_v4_holdout/dialogues.json",
+            "src/tbx_agent/react_decision.py",
+            "src/tbx_agent/react_runtime.py",
+            "src/tbx_agent/evaluation/conversation_fixtures.py",
             "evaluation/suites/software_conformance_v1/README.md",
             "evaluation/suites/software_conformance_v1/cases.jsonl",
             "evaluation/suites/software_conformance_v1/manifest.json",
@@ -475,6 +486,7 @@ REQUIRED_RELEASE_FILES = (
     )
     | DEPLOYMENT_RELEASE_FILES
     | PUBLIC_RETRIEVAL_EVAL_FILES
+    | PUBLIC_IMAGE_FILES
 )
 
 
@@ -535,7 +547,7 @@ def is_public_path(relative: str) -> bool:
     if relative in PUBLIC_EVALUATION_FILES or relative in PUBLIC_RETRIEVAL_EVAL_FILES:
         return True
     if parts[0] == "docs":
-        return relative in PUBLIC_DOC_FILES
+        return relative in PUBLIC_DOC_FILES or relative in PUBLIC_IMAGE_FILES
     return False
 
 
@@ -565,9 +577,13 @@ def validate_release_path(relative: str) -> str:
     if any(lowered.endswith(suffix) for suffix in DENIED_MULTI_SUFFIXES):
         raise ReleasePolicyError(f"denied archive/model/data suffix: {relative}")
     suffix = path.suffix.casefold()
-    if suffix in DENIED_SUFFIXES:
+    if suffix in DENIED_SUFFIXES and relative not in PUBLIC_IMAGE_FILES:
         raise ReleasePolicyError(f"denied generated/model/data suffix: {relative}")
-    if suffix not in ALLOWED_SUFFIXES and path.name not in PUBLIC_ROOT_FILES:
+    if (
+        suffix not in ALLOWED_SUFFIXES
+        and path.name not in PUBLIC_ROOT_FILES
+        and relative not in PUBLIC_IMAGE_FILES
+    ):
         raise ReleasePolicyError(f"unreviewed source suffix: {relative}")
     if not is_public_path(relative):
         raise ReleasePolicyError(f"path is outside the public source allowlist: {relative}")
@@ -575,6 +591,8 @@ def validate_release_path(relative: str) -> str:
 
 
 def scan_content(relative: str, data: bytes) -> None:
+    if relative in PUBLIC_IMAGE_FILES and not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise ReleasePolicyError(f"approved screenshot is not a PNG: {relative}")
     for label, pattern in SECRET_PATTERNS:
         if pattern.search(data):
             raise ReleasePolicyError(f"possible {label} in {relative}")

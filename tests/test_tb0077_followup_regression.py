@@ -87,7 +87,8 @@ class _AdversarialDirectAnswerGenerator:
     model = "test-medgemma-4b"
     model_digest = None
 
-    def __init__(self) -> None:
+    def __init__(self, answer_focus="general") -> None:
+        self.answer_focus = answer_focus
         self.schema_calls: list[str] = []
 
     def complete_structured(self, **kwargs):
@@ -99,6 +100,7 @@ class _AdversarialDirectAnswerGenerator:
                 json.dumps(
                     {
                         "goal": "回答用户当前问题",
+                        "answer_focus": self.answer_focus,
                         "steps": [
                             {
                                 "objective": "直接回答",
@@ -210,7 +212,7 @@ def _turn(
 
 def test_tb0077_capability_answer_is_product_specific(completed_case) -> None:
     service, case_id = completed_case
-    generator = _AdversarialDirectAnswerGenerator()
+    generator = _AdversarialDirectAnswerGenerator(answer_focus="capabilities")
 
     result = _turn(service, case_id, "你会干什么", generator=generator)
 
@@ -226,7 +228,7 @@ def test_tb0077_capability_answer_is_product_specific(completed_case) -> None:
 
 def test_tb0077_case_summary_is_a_public_evidence_projection(completed_case) -> None:
     service, case_id = completed_case
-    generator = _AdversarialDirectAnswerGenerator()
+    generator = _AdversarialDirectAnswerGenerator(answer_focus="case_status")
 
     result = _turn(
         service,

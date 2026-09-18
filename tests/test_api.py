@@ -148,8 +148,8 @@ def test_health_manifest_assessment_agent_and_screening(tmp_path):
         "search_tb_knowledge",
     }
     orchestration_component = components["agent_orchestration"]
-    assert orchestration_component["implementation"] == "tbx-plan-react-v1"
-    assert "LangGraph Plan + ReAct" in orchestration_component["detail"]
+    assert orchestration_component["implementation"] == "tbx-react-first-v4"
+    assert "LangGraph ReAct-first" in orchestration_component["detail"]
     assert "TaskSpec" not in orchestration_component["detail"]
     assert str(tmp_path) not in capabilities.text
     manifest = client.get("/v1/system/manifest")
@@ -193,7 +193,8 @@ def test_health_manifest_assessment_agent_and_screening(tmp_path):
     assert manifest_payload["narrator"]["backend"] == "none"
     orchestration = manifest_payload["agent_orchestration"]
     assert orchestration["framework"] == "langgraph"
-    assert orchestration["policy_id"] == "tbx-plan-react-v1"
+    assert orchestration["policy_id"] == "tbx-react-first-v4"
+    assert orchestration["strategy"] == "react_first_optional_plan"
     assert orchestration["graph_nodes"] == [
         "load_context",
         "plan",
@@ -210,8 +211,8 @@ def test_health_manifest_assessment_agent_and_screening(tmp_path):
         "search_tb_knowledge",
     ]
     assert orchestration["tool_calling"] == {
-        "preferred": "openai_compatible_native_tool_calls",
-        "fallback": "strict_json_schema",
+        "preferred": "strict_json_schema_decision",
+        "fallback": "rule_plan_after_model_error",
     }
     assert orchestration["durable_langgraph_checkpointer"] is False
     assert orchestration["business_state_authority"] == "SQLiteStore"

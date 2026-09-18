@@ -60,9 +60,10 @@ def _upload(service: TBXAgentService):
     )[0]
 
 
-def _plan(*needs: str) -> dict:
+def _plan(*needs: str, answer_focus: str = "general") -> dict:
     return {
         "goal": "完成用户当前请求",
+        "answer_focus": answer_focus,
         "steps": [
             {
                 "objective": f"获取或整合 {need} 证据",
@@ -100,7 +101,12 @@ def _tool(name: str) -> dict:
     return {"tool": name, "direct_answer": None}
 
 
-def _answer(text: str) -> dict:
+def _answer(
+    text: str, *, evidence: list[str] | None = None, answer_focus: str | None = None,
+) -> dict:
+    if evidence is not None or answer_focus is not None:
+        return {"action": "answer", "answer": text, "evidence": evidence or [],
+                "answer_focus": answer_focus or "general"}
     return {"tool": None, "direct_answer": text}
 
 
@@ -119,8 +125,15 @@ def _internal_context(request: dict) -> dict:
 
 
 class _ScriptedPlanReactGenerator:
-    backend_id = "scripted-plan-react"
-    model = "scripted-plan-react-model"
+    """Emit v4 decisions from the existing evidence-oriented test fixtures.
+
+    Single-purpose fixtures go straight to a tool/answer. Only a compound or
+    conditional fixture emits a plan action. ``plans`` is retained as a fixture
+    input for tests importing this helper; it is never an extra planner call.
+    """
+
+    backend_id = "scripted-react-first"
+    model = "scripted-react-first-model"
     model_digest = None
 
     def __init__(
@@ -136,14 +149,62 @@ class _ScriptedPlanReactGenerator:
         self.plan_requests: list[dict] = []
         self.action_requests: list[dict] = []
         self.general_requests: list[dict] = []
+        self.decision_requests: list[dict] = []
+        self._started = False
+        self._fixture = plans[0] if plans else None
+
+    def _decision_payload(self, request: dict) -> dict:
+        self.decision_requests.append(request)
+        if not self._started:
+            self._started = True
+            if self._fixture is None:
+                raise RuntimeError("synthetic decision provider failure")
+            if "steps" not in self._fixture:
+                return self._fixture  # Explicit malformed-response outage test.
+            steps = [step for step in self._fixture["steps"]
+                     if step["evidence_need"] != "none"]
+            if len(steps) > 1 or any(
+                step.get("condition") == "classification_abnormal" for step in steps
+            ):
+                self.plan_requests.append(request)
+                task_names = {
+                    "classification": "classify_image",
+                    "localization": "show_detection_boxes",
+                    "lung_anatomy": "locate_within_lungs",
+                    "tb_knowledge": "search_tb_knowledge",
+                }
+                return {"action": "plan", "tasks": [
+                    {"task": task_names[step["evidence_need"]],
+                     "when": step.get("condition", "always")}
+                    for step in steps
+                ]}
+        self.action_requests.append(request)
+        if not self.actions:
+            raise AssertionError("unexpected extra ReAct decision")
+        action = self.actions.popleft()
+        if "action" in action:
+            return action
+        if action.get("tool"):
+            return {"action": "tool", "tool": action["tool"]}
+        context = _internal_context(request)
+        classification = context["case_state"].get("classification", {})
+        evidence = [
+            step["evidence_need"] for step in self._fixture["steps"]
+            if step["evidence_need"] != "none"
+            and not (step.get("condition") == "classification_abnormal"
+                     and classification.get("result") == "healthy")
+        ]
+        return {
+            "action": "answer",
+            "answer_focus": self._fixture.get("answer_focus", "general"),
+            "evidence": evidence,
+            "answer": action["direct_answer"],
+        }
 
     def complete_structured(self, **kwargs):
         schema_name = kwargs["schema_name"]
-        if schema_name == "tbx_plan_react_plan":
-            self.plan_requests.append(kwargs)
-            if not self.plans:
-                raise AssertionError("unexpected extra plan/replan call")
-            payload = self.plans.popleft()
+        if schema_name == "tbx_react_decision":
+            payload = self._decision_payload(kwargs)
         elif schema_name == "tbx_agent_tool_selection":
             self.action_requests.append(kwargs)
             if not self.actions:
@@ -276,6 +337,8 @@ def test_general_questions_are_direct_answers_without_tools(
     assert result.execution_plan["tool_names"] == []
     assert result.tool_results == []
     assert result.response.summary == answer
+    assert generator.plan_requests == []
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is False
 
 
 @pytest.mark.parametrize(
@@ -346,6 +409,8 @@ def test_tb_questions_use_one_query_only_knowledge_action(
     assert receipt.resolved_guideline_subtopic == subtopic
     assert receipt.resolved_population == population
     assert receipt.resolved_scenario_tags == scenario_tags
+    assert generator.plan_requests == []
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is False
 
 
 def test_cached_classification_why_is_answered_without_another_tool(tmp_path: Path) -> None:
@@ -368,7 +433,7 @@ def test_cached_classification_why_is_answered_without_another_tool(tmp_path: Pa
     classifier_calls = service.vision.call_count
 
     followup_generator = _ScriptedPlanReactGenerator(
-        plans=[_plan("none")],
+        plans=[_plan("classification", answer_focus="classification_rationale")],
         actions=[_answer("因为胸片分类模型将结果归入当前训练类别。")],
     )
     followup = _run(
@@ -386,10 +451,11 @@ def test_cached_classification_why_is_answered_without_another_tool(tmp_path: Pa
     assert service.vision.call_count == classifier_calls == 1
     action_payload = _internal_context(followup_generator.action_requests[0])
     assert action_payload["case_state"]["classification"]["status"] == "completed"
-    assert followup_generator.action_requests[0]["messages"][-1] == {
-        "role": "user",
-        "content": "为什么这样分类？",
-    }
+    current_message = followup_generator.action_requests[0]["messages"][-1]
+    assert current_message["role"] == "user"
+    assert json.dumps("为什么这样分类？", ensure_ascii=False) in current_message["content"]
+    assert followup_generator.plan_requests == []
+    assert followup.execution_plan["plan_metadata"]["rule_fallback_used"] is False
     action_messages = followup_generator.action_requests[0]["messages"]
     assert sum(item["role"] == "system" for item in action_messages) == 1
     assert all(
@@ -415,7 +481,7 @@ def test_cached_localization_is_answered_without_detector_rerun(tmp_path: Path) 
     )
     detector_calls = service.vision.localization_call_count
     followup_generator = _ScriptedPlanReactGenerator(
-        plans=[_plan("none")],
+        plans=[_plan("localization")],
         actions=[_answer("候选区域仍显示在当前胸片的上部区域。")],
     )
     followup = _run(
@@ -435,6 +501,79 @@ def test_cached_localization_is_answered_without_detector_rerun(tmp_path: Path) 
         "completed",
         "completed_no_detection",
     }
+
+
+@pytest.mark.parametrize("query", [
+    "把这张片子里模型认为可疑的区域标出来",
+    "把这张片子里模型认为可疑的区域标出来。你听不懂吗",
+    "那你把刚才提到的地方圈给我看看",
+    "Please draw boxes around the suspicious areas in this image.",
+])
+def test_model_localization_followup_never_passes_through_keyword_router(
+    tmp_path: Path, monkeypatch, query: str,
+) -> None:
+    import tbx_agent.agent_runtime as runtime
+
+    service = TBXAgentService(_settings(tmp_path))
+    case = _upload(service)
+    _run(service, _ScriptedPlanReactGenerator(
+        plans=[_plan("classification")],
+        actions=[_tool("classify_cxr"), _answer("分类完成。")],
+    ), query="帮我筛查一下这张胸片，看看有没有结核可疑。",
+        case_id=case.case_id, thread_id="natural-localization")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("successful model plan reached the keyword intent router")
+
+    monkeypatch.setattr(runtime, "parse_task_spec", forbidden)
+    monkeypatch.setattr(runtime, "projection_task_goals", forbidden)
+    generator = _ScriptedPlanReactGenerator(
+        plans=[_plan("localization")],
+        # Even an unhelpful ReAct answer cannot discharge a localization obligation.
+        actions=[_answer("模型识别为结核类，建议进一步检查。"), _answer("定位完成。")],
+    )
+    result = _run(service, generator, query=query,
+                  case_id=case.case_id, thread_id="natural-localization")
+    assert result.execution_plan["tool_names"] == ["localize_cxr"]
+    assert result.execution_plan["plan_metadata"]["intent_authority"] == "model"
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is False
+    assert result.execution_plan["unfinished_evidence"] == []
+    assert service.vision.call_count == 1
+    assert service.vision.localization_call_count == 1
+    # Availability is determined by actual state, not an earlier intent gate.
+    assert set(_internal_context(generator.action_requests[0])["allowed_tools_this_step"]) == {
+        "localize_cxr", "search_tb_knowledge",
+    }
+
+
+@pytest.mark.parametrize("failure", ["invalid", "provider", "absent"])
+def test_original_localization_request_has_explicit_rule_outage_fallback(
+    tmp_path: Path, failure: str,
+) -> None:
+    service = TBXAgentService(_settings(tmp_path))
+    case = _upload(service)
+    generator = None if failure == "absent" else _ScriptedPlanReactGenerator(
+        plans=[{"unexpected": True}] if failure == "invalid" else [],
+        actions=[_tool("localize_cxr"), _answer("定位完成。")],
+    )
+    result = _run(service, generator,
+                  query="把这张片子里模型认为可疑的区域标出来",
+                  case_id=case.case_id, thread_id="fallback-localization")
+    assert result.execution_plan["tool_names"] == ["localize_cxr"]
+    assert result.execution_plan["plan_metadata"]["intent_authority"] == "rule_fallback"
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is True
+
+
+def test_budget_exhaustion_cannot_hide_unfinished_localization(tmp_path: Path) -> None:
+    service = TBXAgentService(replace(_settings(tmp_path), max_tool_calls=1))
+    case = _upload(service)
+    result = _run(service, _ScriptedPlanReactGenerator(
+        plans=[_plan("classification", "localization")],
+        actions=[_tool("classify_cxr"), _tool("localize_cxr")],
+    ), query="先筛查，再标出可疑区域", case_id=case.case_id, thread_id="budget-partial")
+    assert result.execution_plan["tool_names"] == ["classify_cxr"]
+    assert result.execution_plan["unfinished_evidence"] == ["localization"]
+    assert "本轮尚未完成：候选区域标注" in result.response.summary
 
 
 def test_upload_quality_question_is_zero_tool(tmp_path: Path) -> None:
@@ -562,7 +701,7 @@ def test_conditional_screening_skips_downstream_tools_after_healthy_observation(
     assert len(generator.action_requests) == 2
     after_classification = _internal_context(generator.action_requests[1])
     assert after_classification["case_state"]["classification"]["result"] == "healthy"
-    assert [step["status"] for step in after_classification["plan"]["steps"]] == [
+    assert [step["status"] for step in after_classification["commitments"]["steps"]] == [
         "completed",
         "skipped",
         "skipped",
@@ -614,16 +753,16 @@ def test_conditional_screening_runs_downstream_tools_after_abnormal_observation(
     ]
 
 
-def test_explicit_abnormal_branch_recovers_conditions_omitted_by_small_model(
+def test_outage_rule_fallback_recovers_explicit_abnormal_branch(
     tmp_path: Path,
 ) -> None:
     settings = _settings(tmp_path)
     backend = _HealthyMockBackend(settings.fusion_policy(), settings.rank03_config())
     service = TBXAgentService(settings, vision_backend=backend)
     case = _upload(service)
-    # Compatibility path: an older/smaller planner emits no condition field.
+    # Only a failed/malformed model decision permits keyword-based recovery.
     generator = _ScriptedPlanReactGenerator(
-        plans=[_plan("classification", "localization", "tb_knowledge")],
+        plans=[{"invalid_plan": True}],
         actions=[
             _tool("classify_cxr"),
             _answer("模型更倾向于健康类。"),
@@ -698,12 +837,12 @@ def test_required_evidence_is_executed_when_model_only_answers_directly(
     assert service.vision.call_count == 1
     assert result.execution_plan["plan_revisions"] == []
     steps = result.execution_plan["react_steps"]
-    assert [step["status"] for step in steps] == [
-        "rejected_missing_observation",
-        "succeeded",
-        "rejected_missing_observation",
-        "succeeded",
-        "completed",
+    # Reflection is a bounded missing-observation recovery in the same loop,
+    # not a second planner or an extra synthetic tool step.
+    assert [step["status"] for step in steps] == ["succeeded", "succeeded", "completed"]
+    feedback = _internal_context(generator.action_requests[-1])["feedback"]
+    assert [item["code"] for item in feedback] == [
+        "answer_missing_observation", "answer_missing_observation",
     ]
     assert [
         step["selection_mode"]
@@ -723,7 +862,7 @@ def test_internal_context_echo_is_rejected_and_never_returned(tmp_path: Path) ->
     )
     service = TBXAgentService(_settings(tmp_path))
     generator = _ScriptedPlanReactGenerator(
-        plans=[_plan("none")],
+        plans=[_plan("none", answer_focus="capabilities")],
         actions=[_answer(leaked)],
         general_answers=["我可以回答一般问题，并在需要时调用胸片或指南工具。"],
     )
@@ -746,6 +885,7 @@ def test_internal_context_echo_is_rejected_and_never_returned(tmp_path: Path) ->
     assert result.execution_plan["react_steps"][0]["status"] == "completed"
     assert result.execution_plan["react_steps"][0]["observation_code"] is None
     assert len(generator.general_requests) == 0
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is True
 
 
 def test_changed_question_cannot_reuse_exact_prior_answer(tmp_path: Path) -> None:
@@ -766,8 +906,10 @@ def test_changed_question_cannot_reuse_exact_prior_answer(tmp_path: Path) -> Non
 
     second_generator = _ScriptedPlanReactGenerator(
         plans=[_plan("none")],
-        actions=[_answer(old_answer)],
-        general_answers=["这是针对第二个问题重新生成的回答。"],
+        actions=[
+            _answer(old_answer),
+            _answer("以下是当前应用的能力。", answer_focus="capabilities"),
+        ],
     )
     second = _run(
         service,
@@ -779,18 +921,18 @@ def test_changed_question_cannot_reuse_exact_prior_answer(tmp_path: Path) -> Non
 
     assert second.response.summary == TBX_CAPABILITY_ANSWER
     assert second.response.summary != first.response.summary
-    assert second.execution_plan["react_steps"][0]["status"] == (
-        "rejected_invalid_direct_answer"
-    )
-    assert second.execution_plan["react_steps"][0]["observation_code"] == (
-        "stale_dialogue_answer"
-    )
+    assert len(second_generator.action_requests) == 2
+    feedback = _internal_context(second_generator.action_requests[1])["feedback"]
+    assert feedback[-1]["code"] == "stale_dialogue_answer"
+    assert second.execution_plan["plan_metadata"]["rule_fallback_used"] is False
+    assert second_generator.plan_requests == []
+    assert second_generator.general_requests == []
 
 
 def test_direct_generic_capability_answer_is_normalized_to_tbx_agent(tmp_path: Path) -> None:
     service = TBXAgentService(_settings(tmp_path))
     generator = _ScriptedPlanReactGenerator(
-        plans=[_plan("none")],
+        plans=[_plan("none", answer_focus="capabilities")],
         actions=[_answer("我是普通 AI 助手，可以处理各种任务。")],
     )
 
@@ -932,13 +1074,15 @@ def test_compatible_model_planned_classification_survives_parser_miss(
     assert service.vision.call_count == 1
 
 
-def test_plan_cannot_grant_classifier_for_medication_dose_question(tmp_path: Path) -> None:
+def test_react_can_add_requested_evidence_omitted_from_optional_plan(tmp_path: Path) -> None:
     service = TBXAgentService(_settings(tmp_path))
     case = _upload(service)
     generator = _ScriptedPlanReactGenerator(
-        plans=[_plan("classification", "tb_knowledge", "none")],
+        plans=[_plan("localization", "tb_knowledge")],
         actions=[
-            _answer("先直接回答。"),
+            _tool("classify_cxr"),
+            _tool("localize_cxr"),
+            _tool("search_tb_knowledge"),
             _answer("已根据本轮知识检索结果回答。"),
         ],
     )
@@ -946,15 +1090,18 @@ def test_plan_cannot_grant_classifier_for_medication_dose_question(tmp_path: Pat
     result = _run(
         service,
         generator,
-        query="患者 60 kg，肝肾功能正常，利福平具体多少毫克？",
+        query="帮我筛查这张胸片，标出可疑区域，再说明下一步做什么检查。",
         case_id=case.case_id,
         thread_id="dose-plan-tool-contract",
     )
 
-    assert result.execution_plan["tool_names"] == ["search_tb_knowledge"]
-    assert result.execution_plan["plan_metadata"]["evidence_contract_guard_applied"] is True
+    # An optional plan is a commitment ledger, not the tool allowlist.
+    assert result.execution_plan["tool_names"] == [
+        "classify_cxr", "localize_cxr", "search_tb_knowledge",
+    ]
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is False
     assert result.trace.terminal.reason_code == "react_answered"
-    assert service.vision.call_count == 0
+    assert service.vision.call_count == 1
 
 
 def test_no_image_state_rejects_model_requested_image_tool(tmp_path: Path) -> None:
@@ -979,7 +1126,10 @@ def test_no_image_state_rejects_model_requested_image_tool(tmp_path: Path) -> No
     assert "上传胸片" in result.response.summary
     assert "已分析" not in result.response.summary
     assert "模型识别" not in result.response.summary
-    assert generator.action_requests == []
+    assert len(generator.action_requests) == 1
+    allowed = _internal_context(generator.action_requests[0])["allowed_tools_this_step"]
+    assert "classify_cxr" not in allowed
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is True
 
 
 class _FailingClassifier(MockRank03Backend):
@@ -988,7 +1138,7 @@ class _FailingClassifier(MockRank03Backend):
         raise RuntimeError("synthetic classifier failure")
 
 
-def test_failed_tool_observation_replans_to_independent_knowledge_tool(
+def test_failed_tool_observation_returns_to_react_for_independent_knowledge_tool(
     tmp_path: Path,
 ) -> None:
     settings = _settings(tmp_path)
@@ -998,12 +1148,11 @@ def test_failed_tool_observation_replans_to_independent_knowledge_tool(
     generator = _ScriptedPlanReactGenerator(
         plans=[
             _plan("classification", "tb_knowledge", "none"),
-            _plan("tb_knowledge", "none"),
         ],
         actions=[
             _tool("classify_cxr"),
             _tool("search_tb_knowledge"),
-            _answer("分类失败，但已根据指南说明下一步检查。"),
+            _answer("分类失败，但已根据指南说明下一步检查。", evidence=["tb_knowledge"]),
         ],
     )
 
@@ -1023,10 +1172,10 @@ def test_failed_tool_observation_replans_to_independent_knowledge_tool(
         "failed",
         "succeeded",
     ]
-    assert len(result.execution_plan["plan_revisions"]) == 1
-    revision = result.execution_plan["plan_revisions"][0]
-    assert revision["trigger"] == "tool_observation"
-    assert revision["reason_code"] == "tool_execution_failed"
+    assert result.execution_plan["plan_revisions"] == []
+    assert len(generator.plan_requests) == 1
+    assert len(_internal_context(generator.action_requests[1])["observations"]) == 1
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is False
     assert result.execution_plan["react_steps"][0]["status"] == "failed"
     assert result.execution_plan["react_steps"][1]["tool_name"] == (
         "search_tb_knowledge"
@@ -1059,17 +1208,15 @@ def test_anatomy_failure_keeps_successful_visual_and_guideline_evidence_partial(
                 "lung_anatomy",
                 "tb_knowledge",
             ),
-            # A small model may keep the failed objective in its revised plan.
-            # The attempted Observation must prevent a duplicate tool call
-            # without blocking the independent guideline step or final answer.
-            _plan("lung_anatomy", "tb_knowledge"),
         ],
         actions=[
             _tool("classify_cxr"),
             _tool("localize_cxr"),
             _tool("analyze_lung_anatomy"),
             _tool("search_tb_knowledge"),
-            _answer("已整合当前仍然可用的模型证据和指南依据。"),
+            _answer("已整合当前仍然可用的模型证据和指南依据。", evidence=[
+                "classification", "localization", "tb_knowledge",
+            ]),
         ],
     )
 
@@ -1100,21 +1247,18 @@ def test_anatomy_failure_keeps_successful_visual_and_guideline_evidence_partial(
     assert result.response.response_kind != ResponseKind.SAFE_ABSTENTION
     assert result.trace.terminal.reason_code == "react_answered_with_partial_evidence"
     assert result.execution_plan["finalization_recovery"]["partial_evidence"] is True
+    assert result.execution_plan["plan_metadata"]["rule_fallback_used"] is False
     assert result.response.citations
-    assert "模型证据" in result.response.summary
-    assert "指南建议" in result.response.summary
-
-    model_section, guideline_section = result.response.summary.split(
-        "指南建议",
-        maxsplit=1,
-    )
-    assert "模型" in model_section
-    assert "候选" in model_section
-    assert "肺野" in model_section
+    # Preserve successful facts, sourced guidance and the explicit failure;
+    # the presentation need not retain the v3 section titles.
+    summary = result.response.summary
+    assert "模型" in summary
+    assert "候选" in summary
+    assert "肺野" in summary
+    assert "NAAT" in summary
     assert any(
-        marker in model_section
+        marker in summary
         for marker in ("不可用", "未完成", "未能完成")
     )
-    assert "本次所需工具未能在受控执行边界内完成" not in model_section
-    assert "因此没有生成医学建议" not in model_section
-    assert guideline_section.strip()
+    assert "本次所需工具未能在受控执行边界内完成" not in summary
+    assert "因此没有生成医学建议" not in summary

@@ -1,19 +1,9 @@
-# Historical trajectory fixture
+# trajectory_v1
 
-This directory preserves the pre-controller synthetic trajectory fixture for provenance. Its cases
-target the retired multi-step plan/conditional-recovery schema and do **not** validate the current
-`TaskSpec -> CaseState -> one action -> Observation -> replanning -> STOP/REFER_TO_HUMAN` runtime.
+Synthetic fixtures for tool trajectory schema and evidence binding. Tests load `cases.jsonl` and its matching
+`manifest.json`; keep their IDs, expectations and content hashes together. These assets contain
+no patient images, model weights or execution results.
 
-Do not publish a result from this fixture as current Agent evidence. A replacement suite must first:
-
-- use `AgentRunTrace` v2, including `ControllerDecision`, `StateTransition`, `TerminalRecord`, and
-  `AgentBudget`;
-- assert one action per decision and a fresh state hash after each tool Observation;
-- cover success, completed-with-no-detection, failure, unavailable capability, evidence conflict,
-  missing prior study, and budget exhaustion branches;
-- verify the default 5-step / 4-tool budget and absence of autonomous retry;
-- retain only structured hashes and reason codes, never model chain-of-thought or patient data.
-
-Until that migration is complete, use the controller unit and orchestration tests named in
-[`docs/agent_trajectory_evaluation.md`](../../../docs/agent_trajectory_evaluation.md). The retained
-JSONL/manifest files are historical fixtures, not a release gate.
+The versioned directories support compatibility and regression tests. They are not independent
+clinical datasets or a measure of real-model accuracy. Current test scope and results are in
+[the evaluation overview](../../../docs/evaluation.md).

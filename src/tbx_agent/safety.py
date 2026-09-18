@@ -72,9 +72,72 @@ _MEDICATION_CONTEXT_PATTERN = re.compile(
 )
 
 _UNSUPPORTED_EXECUTION_CLAIM_PATTERN = re.compile(
-    r"(?:我|已|已经|刚刚).{0,8}(?:调用|执行|运行|删除|修改|上传|读取|分析)"
+    r"(?:我|已|已经|刚刚|正在|即将|开始).{0,8}(?:调用|执行|运行|删除|修改|上传|读取|分析)"
     r".{0,12}(?:工具|命令|记录|文件|病例|胸片|图像)"
 )
+
+# Free chat carries no image evidence. Both positive and negative patient-level
+# findings must go through the typed evidence compositor, even if they avoid
+# words such as "diagnosed". These are output checks, not user-intent routing.
+_UNSUPPORTED_VISUAL_CLAIM_PATTERNS = (
+    re.compile(
+        r"(?:这张|该|当前|你的|您的).{0,8}(?:胸片|影像|图像|片子)"
+        r".{0,12}(?:显示|提示|可见|存在|发现|正常|异常|未见|没有)"
+    ),
+    re.compile(
+        r"(?:[左右双两](?:侧)?(?:上|中|下)?肺(?:野|叶)?|肺[尖门部野]|胸膜|心影)"
+        r".{0,18}(?:可见|存在|发现|显示|未见|没有|增大|增厚|正常|异常|清晰|模糊)"
+    ),
+    re.compile(
+        r"(?:可见|发现|检出|未见|没有|存在).{0,18}"
+        r"(?:结节|空洞|浸润|实变|积液|气胸|钙化|斑片影|病灶)"
+    ),
+    re.compile(
+        r"(?:结节|空洞|浸润|实变|积液|病灶|候选区域).{0,12}"
+        r"(?:位于|在[左右]|直径|大小(?:为|约)|\d+(?:\.\d+)?\s*(?:厘米|毫米|cm|mm))"
+    ),
+    re.compile(
+        r"\b(?:this|your|the current)\s+(?:chest\s+)?(?:x[- ]?ray|image|radiograph|scan)"
+        r".{0,32}\b(?:shows?|reveals?|demonstrates?|contains?|is normal|is abnormal)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:left|right|bilateral)\s+(?:(?:upper|middle|lower)\s+)?"
+        r"(?:lung|lobe|lung field).{0,32}"
+        r"\b(?:has|shows?|contains?|nodule|opacity|cavity|effusion|clear|normal|abnormal)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:no|there is|there are|detected|identified)\s+(?:evidence of\s+)?"
+        r".{0,24}\b(?:nodule|nodules|cavity|cavities|effusion|pneumothorax|lesion|lesions)\b",
+        re.IGNORECASE,
+    ),
+)
+
+
+def unsupported_general_visual_claim(text: str) -> bool:
+    """Reject common patient-finding assertions without claiming exhaustive NLP.
+
+    A conditional example or an explicit inability to assess is not an observed
+    finding. The check is clause-scoped so a disclaimer in another sentence
+    cannot authorize an invented result.
+    """
+    for clause in re.split(r"[。！？!?；;\n]+|(?<!\d)\.(?!\d)", text):
+        for pattern in _UNSUPPORTED_VISUAL_CLAIM_PATTERNS:
+            for match in pattern.finditer(clause):
+                prefix = clause[:match.start()]
+                if re.search(
+                    r"(?:无法|不能|尚不能|不应|不能据此)(?:判断|确定|推断|声称).{0,8}$"
+                    r"|(?:如果|假设|例如).{0,8}$"
+                    r"|\b(?:cannot|can't|unable to)\s+(?:determine|say|assess)\s*"
+                    r"(?:whether\s+)?(?:the\s+)?$"
+                    r"|\b(?:if|suppose|for example)\s*$",
+                    prefix,
+                    re.IGNORECASE,
+                ):
+                    continue
+                return True
+    return False
 
 _NON_DIAGNOSTIC_SCOPE_PATTERNS = (
     re.compile(r"不用于确诊(?:或排除)?肺?结核"),
@@ -199,6 +262,11 @@ class SafetyVerifier:
     def verify(self, response: AgentResponse) -> AgentResponse:
         response = _normalize_code_owned_terminology(response)
         text = _all_text(response)
+        if (
+            response.response_kind == ResponseKind.GENERAL_ANSWER
+            and unsupported_general_visual_claim(response.summary)
+        ):
+            raise SafetyViolationError("general answer contains ungrounded image findings")
         if (
             response.response_kind == ResponseKind.GENERAL_ANSWER
             and _UNSUPPORTED_EXECUTION_CLAIM_PATTERN.search(text)

@@ -1,0 +1,85 @@
+[
+  {
+    "id": "fresh_case_to_patient_lung_fields",
+    "turns": [
+      {
+        "query": "图片刚放进来。先核对一下，目前已经得到哪些分析结果？",
+        "tools": [],
+        "contains_any": ["未", "没有", "尚无"]
+      },
+      {
+        "query": "现在请判断这幅胸片应归到哪一种类别。",
+        "tools": ["classify_cxr"],
+        "contains_any": ["结核类", "结核类别", "TB"]
+      },
+      {
+        "query": "那就把可疑的地方框一下给我看。",
+        "tools": ["localize_cxr"],
+        "contains_any": ["候选", "检测框", "已标"]
+      },
+      {
+        "query": "这个框落在患者哪边肺的哪个肺区？",
+        "tools": ["analyze_lung_anatomy"],
+        "contains_any": ["左中肺野", "左侧中肺野", "左肺中部", "左肺中区"]
+      },
+      {
+        "query": "先不要运行。只核对刚才的分割是否已有结果。",
+        "tools": [],
+        "contains_any": ["已完成", "已运行", "已有", "左中肺野", "左肺中部"]
+      }
+    ]
+  },
+  {
+    "id": "healthy_branch_then_explicit_boxes",
+    "healthy": true,
+    "turns": [
+      {
+        "query": "请先给整片分类：若属于健康类，到此为止；其余类别再标注候选区。",
+        "tools": ["classify_cxr"],
+        "contains_any": ["健康类", "健康类别", "正常类"]
+      },
+      {
+        "query": "即使类别正常，这次也请显示候选框；先别做肺野分割。",
+        "tools": ["localize_cxr"],
+        "contains_any": ["候选", "检测框", "已标"]
+      }
+    ]
+  },
+  {
+    "id": "empty_boxes_and_exclusion_question",
+    "empty": true,
+    "turns": [
+      {
+        "query": "这轮只做病灶检测，把达到显示条件的位置框在图上。",
+        "tools": ["localize_cxr"],
+        "contains_any": ["未发现", "没有发现", "未检出", "没有候选"]
+      },
+      {
+        "query": "那么，光凭没框就能断言我没有结核吗？",
+        "tools": [],
+        "contains_any": ["不能", "无法", "不代表", "不等于"],
+        "excludes": ["可以完全排除结核", "能够完全排除结核"]
+      }
+    ]
+  },
+  {
+    "id": "missing_image_and_topic_switch",
+    "image": false,
+    "turns": [
+      {
+        "query": "文件还在我电脑里，尚未发给你；能先替这张片做个分类吗？",
+        "tools": [],
+        "contains_any": ["上传", "没有", "尚未", "未提供"]
+      },
+      {
+        "query": "换个话题，7乘8是多少？",
+        "tools": [],
+        "contains_any": ["56", "五十六"]
+      },
+      {
+        "query": "明白，今天先聊到这儿。",
+        "tools": []
+      }
+    ]
+  }
+]

@@ -1,6 +1,6 @@
 # 快速部署
 
-Demo 不需要模型或 LLM 服务。真实模式使用
+真实模式使用
 [v0.1.0 Release](https://github.com/fusq-zt/tbx-agent/releases/tag/v0.1.0) 的视觉包与另外准备的语言模型。
 当前仓库和附件均为私有，需登录获授权账号；公开可见性与源码许可证尚待维护者确认。
 
@@ -16,7 +16,7 @@ cd tbx-agent
 没有 Git 时，也可登录[仓库页面](https://github.com/fusq-zt/tbx-agent)，
 选择 **Code → Download ZIP**，解压后进入源码根目录。
 
-## 环境与 Demo
+## Python 环境
 
 支持 Python 3.11–3.13。以下命令均在源码根目录运行。
 
@@ -25,8 +25,7 @@ Windows PowerShell：
 ```powershell
 python -m venv .venv
 & .\.venv\Scripts\python.exe -m pip install --upgrade pip
-& .\.venv\Scripts\python.exe -m pip install -e ".[ui]"
-& .\scripts\run_local.ps1 -Demo
+& .\.venv\Scripts\python.exe -m pip install -e ".[ui,dicom,vision,anatomy]"
 ```
 
 Linux：
@@ -35,12 +34,8 @@ Linux：
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -e ".[ui]"
-sh scripts/run_local.sh --demo
+python -m pip install -e ".[ui,dicom,vision,anatomy]"
 ```
-
-打开 [Streamlit](http://127.0.0.1:8501) 或 [FastAPI 文档](http://127.0.0.1:8000/docs)。
-Demo 标记模拟结果，关闭真实视觉和必需 LLM 门控。停止时在启动终端按 Ctrl+C。
 
 也可使用 `scripts/bootstrap.ps1` 或 `sh scripts/bootstrap.sh` 创建环境并安装默认
 `ui,dicom` 依赖。bootstrap 默认不下载模型，也不覆盖已有 `.env`。
@@ -80,7 +75,7 @@ export TBX_AGENT_RANK03_RUNTIME_CONFIG="$TBX_AGENT_DATA_ROOT/config/rank03_runti
 不要覆盖已有配置。dotenv 不执行 Shell 展开，不能直接依赖 `$HOME`、`$env:...` 或命令替换。
 已有非空进程变量优先于 dotenv。
 
-## 真实模式与排障
+## 下载模型并启动
 
 完成 [真实模型部署](inference_models.md) 后，在设置过相同变量的终端运行：
 
@@ -96,6 +91,8 @@ sh scripts/run_local.sh
 
 启动器读取项目 `.env` 和外部 `config/llm.env`，管理本地 llama.cpp、预检、API 与 UI。
 真实模式不要添加 Demo 参数。
+启动后打开 [Streamlit](http://127.0.0.1:8501) 或 [FastAPI 文档](http://127.0.0.1:8000/docs)。
+停止时在启动终端按 Ctrl+C。
 
 | 现象 | 检查 |
 | --- | --- |

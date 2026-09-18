@@ -42,7 +42,7 @@ class _FakeDomain:
     def load_context(self, state, context):
         self.calls.append("load_context")
         assert context.thread_id == "thread-1"
-        return {"context_loaded": True, "next_node": GraphRoute.PLAN}
+        return {"context_loaded": True, "next_node": GraphRoute.DECIDE}
 
     def plan(self, state, context):
         self.calls.append("plan")
@@ -129,13 +129,21 @@ def test_public_workflow_is_real_state_graph_with_required_nodes():
         "replan",
         "finalize",
     }.issubset(graph.nodes)
+    edges = {(edge.source, edge.target) for edge in graph.edges}
+    assert {
+        ("load_context", "decide"),
+        ("load_context", "plan"),
+        ("decide", "plan"),
+        ("decide", "decide"),
+    }.issubset(edges)
 
 
 def test_public_provenance_describes_production_graph_and_tool_boundary():
     provenance = plan_react_provenance()
 
     assert provenance["framework"] == "langgraph"
-    assert provenance["policy_id"] == "tbx-plan-react-v1"
+    assert provenance["policy_id"] == "tbx-react-first-v4"
+    assert provenance["strategy"] == "react_first_optional_plan"
     assert provenance["graph_nodes"] == list(LANGGRAPH_NODE_NAMES)
     assert provenance["model_visible_tools"] == [
         "classify_cxr",
@@ -144,22 +152,22 @@ def test_public_provenance_describes_production_graph_and_tool_boundary():
         "search_tb_knowledge",
     ]
     assert provenance["tool_selection_priority"] == [
-        "native_tool_call",
-        "json_schema_fallback",
+        "structured_react_decision",
     ]
     assert provenance["tool_calling"] == {
-        "preferred": "openai_compatible_native_tool_calls",
-        "fallback": "strict_json_schema",
+        "preferred": "strict_json_schema_decision",
+        "fallback": "rule_plan_after_model_error",
     }
     assert provenance["durable_langgraph_checkpointer"] is False
     assert provenance["business_state_authority"] == "SQLiteStore"
     assert provenance["replans_after_each_observation"] is False
     assert provenance["decides_after_each_observation"] is True
     assert provenance["replan_policy"] == {
-        "trigger": "failed_tool_observation",
+        "trigger": "explicit_failure_or_missing_obligation",
         "max_plan_revisions": 2,
     }
-    assert provenance["trusted_projection_before_model_planning"] is True
+    assert provenance["trusted_projection_before_model_planning"] is False
+    assert provenance["planning_policy"] == "model_requested_complex_tasks_only"
 
 
 def test_compiled_graph_runs_tool_observation_then_fresh_decision():
@@ -174,7 +182,6 @@ def test_compiled_graph_runs_tool_observation_then_fresh_decision():
     assert result == {"summary": "已根据新的分类证据回答。"}
     assert domain.calls == [
         "load_context",
-        "plan",
         "decide",
         "execute_tool",
         "observe",
@@ -235,7 +242,6 @@ def test_graph_replans_conditionally_before_deciding_again():
     assert result == {"summary": "已恢复。"}
     assert domain.calls == [
         "load_context",
-        "plan",
         "decide",
         "replan",
         "decide",

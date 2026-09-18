@@ -270,7 +270,7 @@ def test_mock_cli_runs_full_real_controller_suite_and_writes_cards(tmp_path: Pat
         card for card in report["cases"] if card["case_id"] == "traj.v3.prior-gap.001"
     )
     assert prior["terminal"]["action"] == "stop"
-    assert prior["terminal"]["reason_code"] == "react_answered"
+    assert prior["terminal"]["reason_code"] == "trusted_non_tool_answer"
     assert prior["tool_calls"] == []
     assert report["runtime_finding_counts"][
         "recovery:saturated_retry_succeeded"

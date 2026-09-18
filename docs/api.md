@@ -67,6 +67,7 @@ Agent、胸片和主动筛查响应使用同一个结构：
 ```text
 general_answer
 visual_screening_result
+localization_result
 diagnostic_information
 next_test_information
 treatment_education
@@ -74,10 +75,16 @@ active_screening_question
 active_screening_summary
 screening_report
 case_explanation
+capability_statement
+emergency_escalation
 safe_abstention
 ```
 
-当前端点实际发出的主要值包括 `general_answer`、`visual_screening_result`、`next_test_information`、`treatment_education`、`active_screening_question`、`active_screening_summary` 和 `safe_abstention`。`general_answer` 是零工具调用的当前 provider 通用回答，不代表病例证据。病例解释仍返回 `visual_screening_result`；报告端点返回制品元数据而不是 `screening_report`；不要假设枚举中的每个值都已有对应路由。
+客户端应按返回的 `response_kind` 渲染：分类结论为 `visual_screening_result`，候选区域为
+`localization_result`，病例状态或缓存证据解释可为 `case_explanation`，纯系统能力说明为
+`capability_statement`，急症升级为 `emergency_escalation`。`general_answer` 是普通问答，不代表
+病例证据。复合问题可在同一响应中保留病例事实和指南引用；不要仅凭类型丢弃其他非空字段。
+报告端点返回制品元数据；枚举值不意味着存在同名路由。
 
 `visual_result` 枚举：
 
@@ -573,24 +580,22 @@ query 必须包含 `thread_id`，research/development 档另可提供 `owner_sco
 |---|---|
 | `execution_receipt` | 兼容字段；有工具调用时等于最后一个 receipt，无调用时为 null |
 | `execution_receipts` | 本轮实际执行的全部工具收据，按执行顺序排列 |
-| `execution_plan` | 主 Plan+ReAct 脱敏轨迹：`framework=langgraph`、`graph_node_trace`、`initial_plan`、`plan_revisions`、`react_steps`、实际工具历史与 Schema/选择模式；初始 Plan 是目标清单，不是固定工具调用列表 |
+| `execution_plan` | ReAct 脱敏轨迹：`framework=langgraph`、`strategy=react_first_optional_plan`、实际节点/工具历史、可选计划及决策来源；`plan_metadata.planning_used` 表示是否实际规划 |
 | `reflection` | 正常轮次为 null；仅在硬门拒绝、必需 Observation 缺失或工具失败触发修订时返回简短触发/修订计数，不含 CoT |
-| `agent_trace` | v2 兼容轨迹：高层 TaskSpec、预算和终止原因；Plan+ReAct 的逐步事实以 `execution_plan` 与 receipt 为准，不含 CoT |
+| `agent_trace` | v2 兼容轨迹：高层 TaskSpec、预算和终止原因；逐步事实以 `execution_plan` 与 receipt 为准，不含 CoT |
 
-主链先生成一个可公开的 `initial_plan`，步骤只描述 `objective`、`evidence_need` 和状态，不预选或
-预授权完整工具列表。随后从当前病例派生 `CaseState`，ReAct 每次只能直接回答，或选择四个公开
-工具之一：`classify_cxr`、`localize_cxr`、`analyze_lung_anatomy`、`search_tb_knowledge`。工具返回
-Observation 后服务端重新读取病例、重建状态，再继续下一次单动作选择、修订 Plan 或回答。一个
-ReAct step 不会批量执行多个工具。默认上限为 5 个决策步骤、4 次工具调用、3 次高成本视觉调用和
-10 个成本单位；急症、权限、前置条件和预算由代码硬门控制。
+主链从 `load -> decide` 开始。LLM 通过 `tbx_react_decision` 的结构化语义任务判断当前需求，
+执行器结合缓存状态和权限将任务解析为直接回答、单次工具调用或可选规划。复杂问题需要规划时才经过
+`plan` 节点；兼容字段 `initial_plan` 的存在不代表发生过额外规划调用。四个公开工具是
+`classify_cxr`、`localize_cxr`、`analyze_lung_anatomy`、`search_tb_knowledge`。工具返回
+Observation 后服务端重新读取病例，再做下一次决策。一轮决策不会批量执行多个工具。
+默认上限为 5 个决策步骤、4 次工具调用、3 次高成本视觉调用和 10 个成本单位；急症、权限、
+前置条件、显式禁止项与预算由代码硬门控制。
 
-OpenAI-compatible provider 支持标准 tool calling 时优先使用原生工具选择；provider 不支持、请求失败
-或返回不合约时，才进入共享同一四工具 allowlist 与参数 Schema 的严格 JSON fallback。两条路径都
-只能建议公开工具名；原始用户 query、病例身份、权限和预算由服务端绑定，模型不能改写。模型不可用、
-越权或输出非法时，最小规则策略只提供受限托底，不扩大工具空间。
-原生响应没有 `tool_calls` 时的正文、JSON fallback 的 `direct_answer` 和通用问答正文均需通过统一
-用户输出校验；`thought/思考`、内部 `case_state`、Plan/ReAct 载荷和与当前问题无关的病例状态不会
-直接进入 `AgentResponse.summary`。
+当前主决策链使用严格 JSON Schema，不先尝试原生 tool calling，也不再增加独立意图解析调用。
+provider 不可用或输出不合约时才采用受限规则托底；托底仍受同一权限和预算约束。模型不能改写
+服务端绑定的病例身份、用户原始问题或工具参数。所有用户正文经过输出校验；内部思考、图状态、
+结构化决策载荷和没有证据支持的病例判断不会直接进入 `AgentResponse.summary`。
 
 上传时的解码和基础质量检查不是模型工具；质量询问直接读取病例已有证据。普通问答、能力/病例状态
 以及纵向比较能力缺口可以零工具回答。产品能力说明和“汇总已完成分析”是代码拥有的受信投影：前者
@@ -598,11 +603,11 @@ OpenAI-compatible provider 支持标准 tool calling 时优先使用原生工具
 不产生工具 receipt。当前没有经过验证的纵向比较模型，即使提供前后片也不会输出
 “好转、恶化或稳定”，也不会伪造比较 receipt。
 
-与病例/TB 工具无关的问题由确定性解析器标为 `GENERAL_CHAT`，随后用独立
-`tbx_general_chat_answer` Schema 调用本轮选择的本地 MedGemma 或 OpenAI-compatible provider。该路径
-返回 `response_kind=general_answer`、`execution_receipt=null`、空 `execution_receipts/tool_names`；
-不发送病例、图像或指南；同一 identity-bound thread 最多附带进程内三组通用问答供短追问使用。
-这些原文不进入 SQLite 或审计，换 thread/重启后失效。provider 未配置或调用失败时返回明确模型状态，
+与病例/TB 工具无关的问题可由 LLM 选择为通用问答，v4 可直接使用本轮结构化决策中的 `answer`，
+不必额外调用独立回答模型。该路径返回 `response_kind=general_answer`、`execution_receipt=null`、
+空 `execution_receipts/tool_names`。决策请求包含授权病例的简洁结构化状态和最近一对交互，不发送原始
+图像；零工具调用并不表示没有病例上下文。服务的进程内聊天窗口最多保存三对交互，
+原文不进入 SQLite 或审计，换 thread/重启后失效。provider 未配置或调用失败时返回明确模型状态，
 不会返回“分类未运行；定位未运行”。明确询问病例状态时仍走 `CASE_STATUS`。
 
 `search_tb_knowledge` 只接收原始问题。人群、检查实体、scope、subtopic 和适用场景在工具内部解析、
@@ -618,17 +623,18 @@ plan/step/call/request/trace ID、selection source、幂等键、状态、权限
 尝试各自保留真实 receipt，最终回答只采用该逻辑步骤的最后一次 attempt。
 
 `execution_plan.source=plan_react` 且 `framework=langgraph`；`graph_node_trace` 只保存本轮实际节点名。
-`initial_plan` 保存公开目标，`plan_revisions` 保存触发码/原因码，
+`initial_plan` 保存公开目标，`plan_metadata.planning_used` 区分可选规划与直接决策，
+`plan_revisions` 保存触发码/原因码，
 `react_steps` 保存每步的公开工具或 answer、选择模式、状态、Observation code 和受限恢复标志。
 `agent_trace.trace_version` 仍为 `tbx-agent-trace-v2`，用于兼容高层 TaskSpec、预算与终止原因。
 `hidden_reasoning_persisted` 固定为 `false`。这表示图状态和轨迹不持久化自由推理，不表示信任 provider
 自行隐藏思考；provider 正文仍经过上述输出校验。Streamlit 只显示真实 receipt，不把 Plan 目标模拟成已执行进度。
 
-线程还保存最近一次成功且在白名单内的语义意图。工具回答和缓存证据回答都可更新该值；“继续”
-“展开”等短追问只继承这个目标并使用 `context_memory` 来源，不重新让 LLM 从较早病例事实中附加
-目标。Plan 生成来源、Schema 状态、模型和 token usage（如适用）记录在
-`execution_plan.plan_metadata`；ReAct 的 `selection_mode` 区分 native tool calling、JSON fallback 与
-最小规则托底。
+线程还保存最近一次成功且在白名单内的语义意图。正常 v4 每轮仍由模型结合有限上下文判断当前目标，
+“继续”“展开”等短追问并非跳过模型的固定继承。运行时继续检查权限、缓存及未完成义务，
+规则降级路径可以使用受限意图记忆。决策/计划来源、Schema 状态、模型和 token usage（如适用）记录在
+`execution_plan.plan_metadata` 与 `react_steps`；工具 receipt 保留实际执行来源。客户端应读取
+这些字段，不能把规则托底或缓存读取显示为新的模型推理。
 
 指南工具先按来源状态、topic、jurisdiction、时间和 `allowed_claim_scope` 做准入，再按配置选择实际
 检索模式。无合格命中时返回明确证据缺口；若 Dense/Hybrid 允许降级，receipt 必须记录实际模式与
@@ -865,7 +871,7 @@ production 下载端点从签名派生 tenant + subject，兼容 query 可省略
 
 | 接口 | 地址 | 输出边界 |
 |---|---|---|
-| TBX-Agent API | `http://127.0.0.1:8000/v1/...` | 受硬门约束的 Plan+ReAct、四公开工具、RAG、视觉/安全/病例边界后的结构化 Agent 输出 |
+| TBX-Agent API | `http://127.0.0.1:8000/v1/...` | 受硬门约束的 ReAct 与可选规划、四公开工具、RAG、视觉/安全/病例边界后的结构化 Agent 输出 |
 | raw LLM protocol test | `http://127.0.0.1:11435/v1` | 原始 MedGemma 文本生成；不经过 Agent 安全链，不持久化到病例/记忆/报告 |
 
 活动原始模型使用固定 alias `tbx-medgemma-1.5-4b-it-q4-k-m`、纯文本、thinking=false、输入不超过

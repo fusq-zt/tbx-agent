@@ -82,6 +82,8 @@ dist/
 *.dcm
 *.dicom
 *.png
+!docs/images/chest-analysis.png
+!docs/images/grounded-qa.png
 *.jpg
 *.jpeg
 *.webp

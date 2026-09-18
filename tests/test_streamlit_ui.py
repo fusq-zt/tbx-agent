@@ -621,17 +621,6 @@ def test_initial_workspace_renders_minimal_safe_navigation(requests_stub: Reques
     assert app.chat_input[0].value is None
 
 
-def test_real_mode_keeps_chat_disabled_when_language_model_is_unavailable(
-    requests_stub: RequestsStub,
-) -> None:
-    requests_stub.llm_component_state = "unavailable"
-    app = _run_app()
-    assert not app.exception
-    assert app.chat_input[0].disabled is True
-    assert "DEMO / MOCK" not in _visible_text(app)
-    assert "本地 MedGemma 未就绪" in _visible_text(app)
-
-
 def test_user_chat_message_is_anchored_right_with_right_side_avatar() -> None:
     css = UI_STYLESHEET.read_text(encoding="utf-8")
     user_message_rule = re.search(
@@ -922,6 +911,25 @@ def test_visual_result_card_uses_explicit_non_diagnostic_semantics(
     assert f"tbx-result-banner--{class_name}" in result_markup
     if visual_result == "model_not_flagged":
         assert "tbx-result-banner--flagged" not in result_markup
+
+
+def test_unfinished_localization_notice_is_not_hidden_by_classification_card(
+    requests_stub: RequestsStub,
+) -> None:
+    notice = "分类已完成。本轮尚未完成：候选区域标注。"
+    requests_stub.agent_execution_plan = {
+        "unfinished_evidence": ["localization"],
+        "final_plan": {"steps": [
+            {"evidence_need": "classification", "status": "completed"},
+            {"evidence_need": "localization", "status": "pending"},
+        ]},
+    }
+    requests_stub.agent_response_overrides = {"summary": notice}
+    app = _run_app()
+    app.file_uploader[0].upload("cxr.png", _png_bytes(), "image/png").run()
+    app.chat_input[0].set_value("分析胸片").run()
+    assert not app.exception
+    assert notice in _visible_text(app)
 
 
 def test_model_not_flagged_chat_result_is_one_plain_conclusion(
@@ -1964,3 +1972,14 @@ def test_only_an_active_batch_exposes_review_workspace_with_complete_identity(
         "owner_scope": expected_owner_scope,
         "user_id": expected_user_id,
     }
+
+
+def test_real_mode_keeps_chat_disabled_when_language_model_is_unavailable(
+    requests_stub: RequestsStub,
+) -> None:
+    requests_stub.llm_component_state = "unavailable"
+    app = _run_app()
+    assert not app.exception
+    assert app.chat_input[0].disabled is True
+    assert "DEMO / MOCK" not in _visible_text(app)
+    assert "本地 MedGemma 未就绪" in _visible_text(app)

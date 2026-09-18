@@ -371,6 +371,8 @@ def _infection_control_subtopic(text: str, populations: tuple[str, ...]) -> str:
         "注意什么",
         "注意哪些",
         "减少传播",
+        "预防",
+        "防止传播",
         "通风",
         "咳嗽礼仪",
         "清洁",

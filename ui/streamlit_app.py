@@ -1707,6 +1707,9 @@ def _visible_initial_plan_steps(
     payload: Mapping[str, Any] | None,
 ) -> list[str]:
     execution_plan = _mapping(_mapping(payload).get("execution_plan"))
+    metadata = _mapping(execution_plan.get("plan_metadata"))
+    if metadata.get("planning_used") is False:
+        return []
     initial_plan = _mapping(execution_plan.get("initial_plan"))
     raw_steps = initial_plan.get("steps")
     if not isinstance(raw_steps, Sequence) or isinstance(raw_steps, (str, bytes)):
@@ -1817,6 +1820,15 @@ def _should_hide_initial_agent_payload(prompt: str, payload: Mapping[str, Any]) 
     treatment, urgent help, or next steps still render immediately.
     """
 
+    # A compact classification card must not hide unfinished work or tool failure.
+    execution = _mapping(payload.get("execution_plan"))
+    if execution.get("unfinished_evidence") or execution.get("finalization_recovery"):
+        return False
+    if any(
+        _mapping(step).get("status") in {"pending", "failed"}
+        for step in _mapping(execution.get("final_plan")).get("steps", [])
+    ):
+        return False
     response = _mapping(payload.get("response", payload))
     tool_names = {
         name

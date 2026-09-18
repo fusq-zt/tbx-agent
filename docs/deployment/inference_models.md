@@ -4,11 +4,10 @@
 视觉模型包位于 [v0.1.0 Release](https://github.com/fusq-zt/tbx-agent/releases/tag/v0.1.0)。
 当前仓库为私有：在浏览器中登录已获授权的 GitHub 账号，从 Assets 下载
 `tbx-rank03-inference-v1.zip`，然后执行本地安装。公开可见性与源码许可证尚待维护者确认。
-暂未取得访问权限时，可在已有源码上使用 [Demo](quickstart.md)。
 
 ## 1. 环境
 
-安装 Git CLI，并确认 `git --version` 可用；D-FINE 源码准备需要 Git。Demo 不要求 Git。
+安装 Git CLI，并确认 `git --version` 可用；D-FINE 源码准备需要 Git。
 
 完成 [快速部署](quickstart.md) 的虚拟环境与外部目录设置。下面的 `python` 指虚拟环境解释器；
 Windows 可使用 `& .\.venv\Scripts\python.exe`。

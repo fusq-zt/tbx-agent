@@ -1084,6 +1084,10 @@ _GOAL_DESCRIPTIONS = {
 }
 
 _LOCALIZATION_TARGETS = (
+    "可疑区域",
+    "可疑的区域",
+    "可疑的地方",
+    "可疑之处",
     "病灶",
     "候选区域",
     "候选框",
@@ -1514,6 +1518,9 @@ _GOAL_SPAN_TERMS: dict[TaskGoal, tuple[str, ...]] = {
         "分析这张胸片",
         "识别这张胸片",
         "开始筛查",
+        "做胸片分类",
+        "进行胸片分类",
+        "分类筛查",
         "分类结果",
         "胸片是什么分类",
         "胸片属于哪一类",
@@ -1551,6 +1558,9 @@ _GOAL_SPAN_TERMS: dict[TaskGoal, tuple[str, ...]] = {
         "中肺",
         "下肺",
         "肺区",
+        "肺野哪里",
+        "哪个肺野",
+        "肺内位置",
         "肺野",
         "肺野分割",
         "左右肺掩膜",
@@ -2510,6 +2520,26 @@ def parse_task_spec(
         authorize(TaskGoal.CASE_STATUS, *status_terms)
 
     if not status_query:
+        # Compatibility fallback only: short, explicit image-classification
+        # commands need not also ask whether the image looks tuberculous.
+        # Keep negated commands and status/capability questions tool-free.
+        short_classification_actions = ("做胸片分类", "进行胸片分类", "分类筛查")
+        for clause in re.split(r"[，,。！？!?；;\n]+|(?:然后|随后)", cleaned):
+            if not _has_cxr_semantic_signal(clause):
+                continue
+            if re.search(
+                r"(?:不(?:要|用|必|再|运行|做|进行|执行|分类|筛查)|无需|别|勿|禁止|停止|取消)",
+                clause,
+            ):
+                continue
+            if re.search(
+                r"(?:吗|么|了没|没有|是否|有没有|成功|完成|状态|进度|如何|怎么|介绍|解释|流程|原理)",
+                clause,
+            ):
+                continue
+            matched = _verbatim_span(clause, *short_classification_actions)
+            if matched is not None:
+                authorize(TaskGoal.SCREEN_CLASSIFICATION, span=matched)
         authorize(
             TaskGoal.EXPLAIN_CLASSIFICATION,
             "三类分数",

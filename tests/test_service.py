@@ -940,7 +940,7 @@ def test_comparison_without_prior_reports_unavailable_longitudinal_capability(tm
     )
 
     assert response.response_kind == ResponseKind.SAFE_ABSTENTION
-    assert response.summary.startswith("当前版本未接入可用于纵向比较的既往胸片")
+    assert "没有接入可用于比较的既往胸片" in response.summary
     assert "没有执行前后片比较" in response.summary
     assert "无法判断" in response.summary
     assert "请同时上传" not in response.summary

@@ -1,9 +1,9 @@
-# TBX-Agent system suite v1.3
+# system_v1_3
 
-This synthetic, non-clinical suite preserves every v1.2 contract except the
-explicitly versioned three-class routing change: `sick_non_tb` now maps directly
-to `non_tb_abnormal` and does not enter the batch-only review queue. The v1.2
-suite remains unchanged for historical replay.
+Synthetic fixtures for deterministic software contracts and failure handling. Tests load `cases.jsonl` and its matching
+`manifest.json`; keep their IDs, expectations and content hashes together. These assets contain
+no patient images, model weights or execution results.
 
-The suite does not use TBX11K, a locked split, a hidden test set, patient data,
-or model weights. It is a software and Agent contract regression suite only.
+The versioned directories support compatibility and regression tests. They are not independent
+clinical datasets or a measure of real-model accuracy. Current test scope and results are in
+[the evaluation overview](../../../docs/evaluation.md).

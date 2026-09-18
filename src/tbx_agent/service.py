@@ -963,6 +963,11 @@ def _select_guideline_hits(
             for hit in candidates
             if chunk_id(hit) == "cdc24_shared_utensils_not_transmission"
         ]
+    elif subtopic == "infection_control":
+        # A passage correcting an object-specific misconception must not become
+        # the lead answer to a general question about transmission.
+        candidates = [hit for hit in candidates
+                      if chunk_id(hit) != "cdc24_shared_utensils_not_transmission"]
     if subtopic == "care_setting":
         asks_transition = GuidelineScenarioTag.CARE_AMBULATORY_TRANSITION in scenario_tags
         asks_universal = (

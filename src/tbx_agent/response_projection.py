@@ -10,14 +10,33 @@ import re
 from typing import Any
 
 from .capability_answer import TBX_CAPABILITY_ANSWER
+from .plan_react import AnswerFocus
 from .task_spec import TaskGoal, parse_task_spec
 
-_PROJECTION_GOALS = {TaskGoal.CAPABILITIES, TaskGoal.CASE_STATUS, TaskGoal.SOCIAL}
+_PROJECTION_GOALS = {
+    TaskGoal.CAPABILITIES, TaskGoal.CASE_STATUS, TaskGoal.SOCIAL,
+    TaskGoal.IMAGE_QUALITY, TaskGoal.PRIOR_COMPARISON,
+}
 # Separate independent requests before applying the status parser, which
 # intentionally suppresses classification/localization phrases in status-only
 # questions. Otherwise "summarize completed analysis, then analyze this image"
 # can incorrectly become a zero-tool answer.
 _REQUEST_BOUNDARY = re.compile(r"[，,。！？!?；;\n]+|(?:并且|并|然后|同时|另外|顺便|还要|以及)")
+
+
+def fallback_answer_focus(query: str) -> AnswerFocus:
+    """Lexical compatibility adapter, called only when structured planning fails."""
+    goals = projection_task_goals(query)
+    if {TaskGoal.CAPABILITIES, TaskGoal.CASE_STATUS} <= goals:
+        return AnswerFocus.CAPABILITIES_AND_STATUS
+    mapping = {
+        TaskGoal.CAPABILITIES: AnswerFocus.CAPABILITIES,
+        TaskGoal.CASE_STATUS: AnswerFocus.CASE_STATUS,
+        TaskGoal.IMAGE_QUALITY: AnswerFocus.IMAGE_QUALITY,
+        TaskGoal.PRIOR_COMPARISON: AnswerFocus.PRIOR_COMPARISON,
+        TaskGoal.EXPLAIN_CLASSIFICATION: AnswerFocus.CLASSIFICATION_RATIONALE,
+    }
+    return next((focus for goal, focus in mapping.items() if goal in goals), AnswerFocus.GENERAL)
 
 
 def projection_task_goals(query: str) -> set[TaskGoal]:
@@ -40,18 +59,42 @@ def trusted_non_tool_answer(
     query: str,
     *,
     case_context: dict[str, Any],
+    answer_focus: AnswerFocus | None = None,
 ) -> str | None:
     """Answer system metadata and cached-case summaries without model invention.
 
     These are not tools because they create no new evidence.  They are also not
-    delegated to the small orchestration model: capability metadata is owned by
-    this runtime, while a case summary must be a projection of the public case
-    context rather than a paraphrase of the private Plan/ReAct payload.
+    invented by the orchestration model: the model selects answer_focus, then
+    this runtime supplies capability metadata or public case facts. Omitting
+    answer_focus is a legacy/fallback-only lexical adapter.
     """
 
-    goals = projection_task_goals(query)
+    if answer_focus is not None:
+        goals = {
+            AnswerFocus.CAPABILITIES: {TaskGoal.CAPABILITIES},
+            AnswerFocus.CASE_STATUS: {TaskGoal.CASE_STATUS},
+            AnswerFocus.CAPABILITIES_AND_STATUS: {TaskGoal.CAPABILITIES, TaskGoal.CASE_STATUS},
+            AnswerFocus.IMAGE_QUALITY: {TaskGoal.IMAGE_QUALITY},
+            AnswerFocus.PRIOR_COMPARISON: {TaskGoal.PRIOR_COMPARISON},
+        }.get(answer_focus, {TaskGoal.GENERAL_CHAT})
+    else:
+        goals = projection_task_goals(query)
     if goals - _PROJECTION_GOALS:
         return None
+    if TaskGoal.PRIOR_COMPARISON in goals:
+        return (
+            "当前没有接入可用于比较的既往胸片，也没有执行前后片比较，"
+            "因此无法判断是否出现变化。"
+        )
+    if TaskGoal.IMAGE_QUALITY in goals:
+        if not case_context.get("image_loaded"):
+            return "当前没有已上传的胸片，暂时无法检查图片质量。"
+        quality = case_context.get("quality_check") or {}
+        if quality.get("summary"):
+            return str(quality["summary"])
+        if quality.get("status") == "warning":
+            return "基础输入可用性检查发现问题，请查看上传提示并换用清晰的原始胸片。"
+        return "基础输入可用性检查未发现问题；这不能代替对摆位、吸气和曝光等成像质量的评价。"
     if TaskGoal.CAPABILITIES in goals:
         if TaskGoal.CASE_STATUS in goals:
             return TBX_CAPABILITY_ANSWER + "\n\n" + _case_status_answer(query, case_context)
@@ -94,7 +137,7 @@ def _case_status_answer(query: str, case_context: dict[str, Any]) -> str:
     anatomy = case_context.get("anatomy") or {}
     anatomy_summary = str(anatomy.get("summary") or "").strip()
     if anatomy.get("status") == "completed" and anatomy_summary:
-        completed.append(anatomy_summary)
+        completed.append(("" if concise_summary else "肺野分割已完成。") + anatomy_summary)
     elif localization.get("status") == "completed_no_detection":
         completed.append("候选区域定位已完成，未发现达到显示门槛的候选区域。")
     elif localization.get("status") == "completed":
@@ -116,6 +159,14 @@ def _case_status_answer(query: str, case_context: dict[str, Any]) -> str:
             "stale": "结果已过期",
         }.get(str(localization.get("status")), "未运行")
         completed.append(f"候选区域定位{localization_status}。")
+
+    if anatomy.get("status") != "completed" and not concise_summary:
+        anatomy_status = {
+            "technical_failure": "运行失败", "failed": "运行失败",
+            "pending": "等待运行", "running": "运行中", "unavailable": "暂不可用",
+            "blocked": "暂不可用", "qc_failed": "质量检查未通过",
+        }.get(str(anatomy.get("status")), "未运行")
+        completed.append(f"肺野分割{anatomy_status}。")
 
     if not completed:
         return "胸片已载入，目前还没有完成可汇总的分类、定位或肺野分析。"

@@ -49,8 +49,14 @@ from .narrator import (
     compose_grounded_fallback_summary,
     select_medical_common_knowledge_card,
 )
+from .plan_execution import (
+    prepare_evidence_plan,
+    preserve_plan_obligations,
+    unfinished_evidence,
+)
 from .plan_react import (
     PLAN_REACT_POLICY_ID,
+    AnswerFocus,
     EvidenceNeed,
     PlanConditionState,
     PlanRevisionRecord,
@@ -67,7 +73,7 @@ from .plan_react import (
     reconcile_plan_conditions,
 )
 from .response_composer import merge_agent_responses
-from .response_projection import projection_task_goals
+from .response_projection import fallback_answer_focus, projection_task_goals
 from .response_projection import trusted_non_tool_answer as _trusted_non_tool_answer
 from .retrieval.query_understanding import (
     is_guidance_contextual_followup,
@@ -404,6 +410,7 @@ class _MinimalRuleFallbackGenerator:
                 json.dumps(
                     {
                         "goal": query[:160] or "回答当前问题",
+                        "answer_focus": fallback_answer_focus(query).value,
                         "steps": [
                             {
                                 "objective": objectives[need],
@@ -538,6 +545,12 @@ def _concise_case_context(
             ).summary
         except Exception:
             anatomy_summary = "肺野结构分析已完成。"
+    else:
+        recent_runs = service.store.list_anatomy_runs(
+            case_id=trusted_case.case_id, owner_scope=owner_scope, user_id=user_id, limit=1,
+        )
+        if recent_runs:
+            anatomy_status = str(recent_runs[0].status)
 
     quality_status = "passed" if not trusted_case.image_quality_codes else "warning"
     return {
@@ -545,6 +558,10 @@ def _concise_case_context(
         "quality_check": {
             "status": quality_status,
             "issues": list(trusted_case.image_quality_codes),
+            "summary": service._case_quality_response(  # noqa: SLF001
+                trusted_case, request_id="context-projection", trace_id="context-projection",
+                thread_id="context-projection",
+            ).summary,
         },
         "classification": {
             "status": (
@@ -558,10 +575,12 @@ def _concise_case_context(
             "status": localization.status,
             "candidate_count": len(regions),
             "regions": regions,
+            "coordinate_frame": "image_pixels_not_patient_lung_fields",
         },
         "anatomy": {
             "status": anatomy_status,
             "summary": anatomy_summary,
+            "coordinate_frame": "paired_lung_masks_and_2d_lung_fields",
         },
         # Longitudinal comparison is not exposed as a capability until a real,
         # validated registration/change model exists.
@@ -882,16 +901,16 @@ def _requires_guidance_evidence(
     )
 
 
-def _enforce_plan_evidence_contract(
+def _enforce_fallback_evidence_contract(
     plan: TurnPlan,
     *,
     query: str,
     case_context: dict[str, Any],
 ) -> tuple[TurnPlan, bool]:
-    """Deny irrelevant evidence actions and satisfy already-cached evidence.
+    """Repair rule-fallback evidence actions and satisfy already-cached evidence.
 
-    The small model still chooses and orders objectives.  This guard only
-    prevents a plan from granting an unrelated tool (for example, running the
+    Never apply this lexical adapter to a successful model plan. It
+    prevents a fallback plan from granting an unrelated tool (for example, running the
     chest classifier for a rifampicin-dose question), inserts the real
     localization prerequisite for anatomy, and marks evidence already present
     in the case state as completed.
@@ -1293,15 +1312,9 @@ def _direct_answer_rejection_code(
                 and prior_profile.subtopic == current_profile.subtopic
             )
 
-        non_semantic_goals = {
-            TaskGoal.GENERAL_CHAT,
-            TaskGoal.SOCIAL,
-            TaskGoal.CAPABILITIES,
-            TaskGoal.CASE_STATUS,
-        }
-        prior_goals = set(parse_task_spec(prior_query).task_goals) - non_semantic_goals
-        current_goals = set(parse_task_spec(current_query).task_goals) - non_semantic_goals
-        return bool(prior_goals & current_goals)
+        # Evidence reuse is handled by the plan and trusted projections. Do not
+        # run another keyword intent parser while validating model prose.
+        return False
 
     rendered = answer.strip()
     if any(marker in rendered for marker in _INTERNAL_ANSWER_MARKERS):
@@ -1398,8 +1411,9 @@ def _react_messages(
                 "只有左右侧/肺野区域/结构关系需要新证据时才调用analyze_lung_anatomy；"
                 "结核检查、筛查、治疗、传播、防护或特殊人群知识需要新依据时调用"
                 "search_tb_knowledge。不要因为加载了胸片就自动调用影像工具。"
-                "如果病例状态中的classification/localization/anatomy已经completed，直接"
-                "用它回答追问。quality_check是上传时已完成的基础质控，直接解释；"
+                "缓存只能回答其对应的证据需求。localization已完成仅表示检测框及图像坐标，"
+                "不能满足lung_anatomy所需的左右肺或肺野位置；必须取得肺野分析结果。"
+                "quality_check是上传时已完成的基础质控，直接解释；"
                 "prior_image为null时直接说明没有既往片，不能比较，不要虚构纵向结论。"
                 "回答自然、简洁、针对当前问题；对是否、能否、会不会或可以吗这类问题，"
                 "第一句先直接回答是、否、通常可以或通常不会。不得展示分类概率或定位分数。"
@@ -1432,25 +1446,18 @@ def _direct_react_response(
     prompt_tokens: int | None,
     completion_tokens: int | None,
     preserve_visual_hint: bool = False,
+    answer_focus: AnswerFocus = AnswerFocus.GENERAL,
 ) -> AgentResponse:
     """Wrap a tool-free ReAct answer without adding boilerplate limitations."""
 
-    goals = set(parse_task_spec(query).task_goals)
-    preserve_visual = preserve_visual_hint or bool(
-        goals
-        & {
-            TaskGoal.SCREEN_CLASSIFICATION,
-            TaskGoal.EXPLAIN_CLASSIFICATION,
-            TaskGoal.LOCALIZE,
-            TaskGoal.ANATOMICAL_CONTEXT,
-            TaskGoal.LUNG_FIELDS,
-        }
-    )
+    preserve_visual = preserve_visual_hint
     fusion = getattr(case, "fusion_decision", None) if preserve_visual else None
     visual_response = fusion is not None and getattr(fusion, "visual_result", None) is not None
-    capability_response = TaskGoal.CAPABILITIES in goals
-    quality_response = TaskGoal.IMAGE_QUALITY in goals
-    comparison_response = TaskGoal.PRIOR_COMPARISON in goals
+    capability_response = answer_focus in {
+        AnswerFocus.CAPABILITIES, AnswerFocus.CAPABILITIES_AND_STATUS,
+    }
+    quality_response = answer_focus == AnswerFocus.IMAGE_QUALITY
+    comparison_response = answer_focus == AnswerFocus.PRIOR_COMPARISON
     response = AgentResponse(
         request_id=request_id,
         trace_id=trace_id,
@@ -1513,7 +1520,7 @@ def _direct_react_response(
             response.model_copy(
                 update={
                     "response_kind": ResponseKind.GENERAL_ANSWER,
-                    "summary": "通用问答模型暂时不可用，请检查当前模型连接后重试。",
+                    "summary": "当前生成的回答未通过证据校验，请重试或明确需要执行的分析。",
                     "visual_result": None,
                     "predicted_class": None,
                     "limitations": [],
@@ -1898,22 +1905,7 @@ def _cached_case_evidence_responses(
             reused=True,
             include_guidance=False,
         ).model_copy(update={"thread_id": thread_id})
-        classification_goals = set(parse_task_spec(query).task_goals)
-        normalized_query = "".join(query.casefold().split())
-        asks_for_rationale = (
-            TaskGoal.EXPLAIN_CLASSIFICATION in classification_goals
-            or (
-                any(
-                    marker in normalized_query
-                    for marker in ("为什么", "为何", "依据", "原因", "怎么判", "如何判")
-                )
-                and any(
-                    marker in normalized_query
-                    for marker in ("分类", "模型", "tb", "结核", "结果", "这一类", "筛查")
-                )
-            )
-        )
-        if asks_for_rationale:
+        if plan.answer_focus == AnswerFocus.CLASSIFICATION_RATIONALE:
             classification = service._case_rationale_response(  # noqa: SLF001
                 trusted_case,
                 classification,
@@ -2114,22 +2106,27 @@ class _LangGraphPlanReActDomain:
             plan: TurnPlan,
             metadata: dict[str, Any],
         ) -> tuple[TurnPlan, dict[str, Any]]:
-            plan, contract_applied = _enforce_plan_evidence_contract(
-                plan,
-                query=state["query"],
-                case_context=state["case_context"],
-            )
-            guarded, applied = _ensure_guidance_evidence(
-                plan,
-                query=state["query"],
-                case_context=state["case_context"],
-            )
-            conditioned_by_query, explicit_condition_applied = (
-                _apply_explicit_abnormal_followup_conditions(
-                    guarded,
-                    query=state["query"],
+            # One semantic authority: a validated model plan. Lexical repair is
+            # reserved for provider/schema outages, never a veto on model intent.
+            model_planned = metadata.get("source") == "llm"
+            contract_applied = applied = explicit_condition_applied = False
+            if not model_planned:
+                plan, contract_applied = _enforce_fallback_evidence_contract(
+                    plan, query=state["query"], case_context=state["case_context"],
                 )
-            )
+                plan, applied = _ensure_guidance_evidence(
+                    plan, query=state["query"], case_context=state["case_context"],
+                )
+                plan, explicit_condition_applied = _apply_explicit_abnormal_followup_conditions(
+                    plan, query=state["query"],
+                )
+            conditioned_by_query = prepare_evidence_plan(plan, state["case_context"])
+            metadata = {
+                **metadata,
+                "intent_authority": "model" if model_planned else "rule_fallback",
+                "rule_fallback_used": not model_planned,
+                "state_evidence_reconciled": conditioned_by_query != plan,
+            }
             normalized, normalized_applied = _normalize_public_plan(
                 conditioned_by_query
             )
@@ -2162,7 +2159,8 @@ class _LangGraphPlanReActDomain:
                 }
             return conditioned, metadata
 
-        active_generator = cls._active_generator(context)
+        force_rule_fallback = extra.pop("force_rule_fallback", False)
+        active_generator = None if force_rule_fallback else cls._active_generator(context)
         minimal_generator = _MinimalRuleFallbackGenerator()
         candidate, metadata = create_turn_plan(
             active_generator or minimal_generator,
@@ -2328,35 +2326,6 @@ class _LangGraphPlanReActDomain:
                 "next_node": GraphRoute.FINALIZE,
             }
 
-        if _trusted_non_tool_answer(
-            state["query"], case_context=state["case_context"]
-        ) is not None:
-            # Resolve the answer boundary before a provider can fail planning
-            # or invent tools for a request fully covered by public state.
-            # Keep the normal decide/finalize trace for existing consumers.
-            plan = TurnPlan(
-                plan_id=state["run_id"],
-                goal="回答系统能力或已公开病例状态",
-                steps=[
-                    PlanStep(
-                        id="p1",
-                        objective="投影系统元数据与已公开病例证据",
-                        evidence_need=EvidenceNeed.NONE,
-                    )
-                ],
-            )
-            return {
-                "plan": plan,
-                "initial_plan": plan.model_copy(deep=True),
-                "plan_metadata": {
-                    "source": "deterministic_trusted_projection",
-                    "schema_validated": True,
-                    "prompt_tokens": None,
-                    "completion_tokens": None,
-                },
-                "next_node": GraphRoute.DECIDE,
-            }
-
         plan, metadata = self._build_plan(state, context)
         update: dict[str, Any] = {
             "plan": plan,
@@ -2369,7 +2338,11 @@ class _LangGraphPlanReActDomain:
         if (
             active_generator is not None
             and metadata.get("source") == "minimal_rule_fallback_after_model_error"
-            and not _plan_pending_evidence(plan, case_context=state["case_context"])
+            and all(step.evidence_need == EvidenceNeed.NONE for step in plan.steps)
+            and _trusted_non_tool_answer(
+                state["query"], case_context=state["case_context"],
+                answer_focus=plan.answer_focus,
+            ) is None
         ):
             response = _general_chat_response(
                 context.service,
@@ -2410,7 +2383,8 @@ class _LangGraphPlanReActDomain:
         trusted_answer = _trusted_non_tool_answer(
             state["query"],
             case_context=state["case_context"],
-        )
+            answer_focus=state["plan"].answer_focus,
+        ) if all(step.evidence_need == EvidenceNeed.NONE for step in state["plan"].steps) else None
         if trusted_answer is not None:
             budget = budget.model_copy(update={"steps_used": budget.steps_used + 1})
             plan = state["plan"].model_copy(
@@ -2431,23 +2405,28 @@ class _LangGraphPlanReActDomain:
                     status="completed",
                 )
             )
-            response = _direct_react_response(
-                service,
-                answer=trusted_answer,
-                request_id=state["request_id"],
-                trace_id=state["trace_id"],
-                thread_id=context.thread_id,
-                case_id=state.get("effective_case_id"),
-                case=None,
-                query=state["query"],
-                generator=None,
-                prompt_tokens=None,
-                completion_tokens=None,
-            ).model_copy(
-                update={
-                    "narrator_policy_id": "tbx-trusted-state-projection-v1",
-                    "narration_status": NarrationStatus.SKIPPED_RESPONSE_KIND,
-                }
+            # This text was projected from authorized runtime facts, not free
+            # model prose. Preserve that provenance in the compatibility path
+            # too; marking it general chat would discard its evidence boundary.
+            response = service.safety.verify(
+                AgentResponse(
+                    request_id=state["request_id"],
+                    trace_id=state["trace_id"],
+                    thread_id=context.thread_id,
+                    case_id=state.get("effective_case_id"),
+                    response_kind=(
+                        ResponseKind.CAPABILITY_STATEMENT
+                        if plan.answer_focus == AnswerFocus.CAPABILITIES
+                        else ResponseKind.SAFE_ABSTENTION
+                        if plan.answer_focus == AnswerFocus.PRIOR_COMPARISON
+                        else ResponseKind.CASE_EXPLANATION
+                    ),
+                    summary=trusted_answer,
+                    limitations=["本系统不用于确诊或排除肺结核。"],
+                    safety_policy_id=service.safety.policy_id,
+                    narrator_policy_id="tbx-trusted-state-projection-v1",
+                    narration_status=NarrationStatus.SKIPPED_RESPONSE_KIND,
+                )
             )
             return {
                 "budget": budget,
@@ -2465,6 +2444,12 @@ class _LangGraphPlanReActDomain:
             case_context=state["case_context"],
             attempted_tools=state.get("attempted_tools", set()),
         )
+        # Expose only actionable tools in this turn's plan, not every registered tool.
+        pending_needs = _plan_pending_evidence(
+            plan=state["plan"], case_context=state["case_context"]
+        )
+        allowed_tools = [tool for tool in allowed_tools
+                         if _PUBLIC_TOOL_TO_EVIDENCE[tool] in pending_needs]
         messages = _react_messages(
             query=state["query"],
             plan=state["plan"],
@@ -3000,12 +2985,18 @@ class _LangGraphPlanReActDomain:
                 "terminal_reason": "replan_failed",
                 "next_node": GraphRoute.FINALIZE,
             }
+        revised = preserve_plan_obligations(before, revised)
+        revised, _ = reconcile_plan_conditions(revised, case_context=state["case_context"])
         record = _plan_revision_record(
             before=before,
             after=revised,
             trigger=state.get("replan_trigger") or "observation",
             reason_code=state.get("replan_reason_code") or "new_observation",
         )
+        record = record.model_copy(update={
+            "planning_source": _metadata.get("source"),
+            "rule_fallback_used": bool(_metadata.get("rule_fallback_used")),
+        })
         return {
             "plan": revised,
             "plan_revisions": [*state.get("plan_revisions", []), record],
@@ -3031,7 +3022,8 @@ class _LangGraphPlanReActDomain:
             direct_override is not None
             and direct_override.response_kind == ResponseKind.EMERGENCY_ESCALATION
         )
-        if emergency_override:
+        resolved_response = state.get("resolved_response")
+        if emergency_override or resolved_response is not None:
             cached_candidates, cached_evidence = [], []
         else:
             cached_candidates, cached_evidence = _cached_case_evidence_responses(
@@ -3052,9 +3044,9 @@ class _LangGraphPlanReActDomain:
         visual_failure_notices: list[str] = []
         guideline_failure_notices: list[str] = []
         react_steps = list(state.get("react_steps", []))
-        finalization_recovery: dict[str, Any] | None = None
+        finalization_recovery: dict[str, Any] | None = state.get("resolved_recovery")
         composition_mode = "single_source"
-        for item in final_attempt_results:
+        for item in ([] if resolved_response is not None else final_attempt_results):
             failure_notice = _failed_tool_notice(item)
             if failure_notice is not None:
                 section, notice = failure_notice
@@ -3086,7 +3078,11 @@ class _LangGraphPlanReActDomain:
             }:
                 visual_candidates.append(candidate)
 
-        if emergency_override:
+        if resolved_response is not None:
+            response = service.safety.verify(resolved_response)
+            cached_evidence = state.get("resolved_cached_evidence", [])
+            composition_mode = "react_selected_evidence"
+        elif emergency_override:
             # A cached or already-produced visual answer cannot supersede a
             # local emergency handoff, even when the request also asks for it.
             response = service.safety.verify(direct_override)
@@ -3247,6 +3243,7 @@ class _LangGraphPlanReActDomain:
                 prompt_tokens=state.get("final_direct_usage", (None, None))[0],
                 completion_tokens=state.get("final_direct_usage", (None, None))[1],
                 preserve_visual_hint=planned_visual,
+                answer_focus=state["plan"].answer_focus,
             )
             if (
                 active_generator is None
@@ -3276,6 +3273,20 @@ class _LangGraphPlanReActDomain:
                 case_id=effective_case_id,
                 summary="本轮没有获得完成回答所需的结果，请重试。",
             )
+
+        missing = unfinished_evidence(state["plan"])
+        if missing and not emergency_override:
+            names = {
+                EvidenceNeed.CLASSIFICATION: "胸片分类",
+                EvidenceNeed.LOCALIZATION: "候选区域标注",
+                EvidenceNeed.LUNG_ANATOMY: "肺野空间分析",
+                EvidenceNeed.TB_KNOWLEDGE: "指南证据检索",
+            }
+            notice = "本轮尚未完成：" + "、".join(names[need] for need in missing) + "。"
+            response = service.safety.verify(response.model_copy(update={
+                "summary": (response.summary[:1800] + "\n\n" + notice),
+                "limitations": list(dict.fromkeys([*response.limitations, notice]))[:32],
+            }))
 
         response_hash = _sha256(response.model_dump(mode="json"))
         if tool_results:
@@ -3415,6 +3426,12 @@ class _LangGraphPlanReActDomain:
             "initial_plan": initial_plan.model_dump(mode="json"),
             "final_plan": plan.model_dump(mode="json"),
             "plan_metadata": state.get("plan_metadata", {}),
+            "strategy": "react_first_optional_plan",
+            "answer_focus": state.get("answer_focus"),
+            "answer_evidence": [str(item) for item in state.get("answer_evidence", [])],
+            "decision_usage": state.get("decision_usage", []),
+            "decision_feedback": state.get("decision_feedback", []),
+            "unfinished_evidence": [need.value for need in missing],
             "plan_revisions": [item.model_dump(mode="json") for item in plan_revisions],
             "react_steps": [item.model_dump(mode="json") for item in react_steps],
             "tool_names": [
@@ -3456,6 +3473,12 @@ class _LangGraphPlanReActDomain:
                 "initial_plan_sha256": plan_sha256(initial_plan),
                 "final_plan_sha256": plan_sha256(plan),
                 "plan_revision_count": len(plan_revisions),
+                "intent_authority": state.get("plan_metadata", {}).get("intent_authority"),
+                "rule_fallback_used": state.get("plan_metadata", {}).get("rule_fallback_used"),
+                "model_plan_failure_source": state.get("plan_metadata", {}).get(
+                    "model_plan_failure_source"
+                ),
+                "unfinished_evidence": [need.value for need in missing],
                 "react_steps": [item.model_dump(mode="json") for item in react_steps],
                 "tool_receipts": [
                     item.receipt.model_dump(mode="json") for item in tool_results
@@ -3516,7 +3539,9 @@ def run_agent_turn(
         raise ValueError("message must not be empty")
     # Agent turns and questionnaire operations mutate the same ThreadState.
     lock_key = state_lock_key("thread", owner_scope, user_id, thread_id)
-    domain = _LangGraphPlanReActDomain()
+    from .react_runtime import ReactFirstDomain
+
+    domain = ReactFirstDomain()
     context = PlanReActGraphContext(
         ops=domain.callbacks(),
         service=service,

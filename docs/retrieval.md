@@ -18,7 +18,7 @@ metadata-gated BM25（`sparse`）；BGE-M3/Qdrant Local 只有在模型制品和
 | 固定 query/qrels 评测 | 已实现 BM25/Dense/Hybrid 同套输入、逐模式失败分类和 JSON/Markdown 报告 |
 | sqlite-vec | 保留精确小语料适配器与测试，不是默认，也不是当前索引 CLI 的目标 |
 | Qdrant Server | 仅保留查询边界；当前在线 Agent 与构建 CLI 不接入 |
-| reranker | 代码边界存在，但在线 `GuidelineRetriever` 明确拒绝启用；本轮未评测 |
+| reranker | 代码边界存在，在线 `GuidelineRetriever` 明确拒绝启用 |
 | BGE-M3 sparse/ColBERT | 未实现 |
 | 医学专家 qrels/临床验证 | 未完成，且临床验证不属于本仓库现有证据 |
 
@@ -113,7 +113,7 @@ Qdrant Local 的数据库对只读客户端也使用独占锁。当前按解析�
 创建新实例，重新执行 corpus/model/generation 身份验证。已有请求因此不会在两代索引间隐式切换。
 此锁只协调同一进程；多个 API worker 不应共用同一个 Qdrant Local 根目录。
 
-来源过滤在 Local 使用已有嵌套 payload `document.source_id`，本次来源/生命周期变更无需重建索引；
+来源过滤在 Local 使用嵌套 payload `document.source_id`；
 Qdrant Server 查询边界要求远端 payload 提供顶层 `source_id`。前述 embedding prefix 身份迁移仍需
 按其规则显式重建旧索引。
 
@@ -251,131 +251,29 @@ python scripts/build_rag_index.py \
 `--output` 必须与在线配置的 `qdrant_path` 指向同一根目录。已有 promoted index 时命令拒绝覆盖；确认
 新 corpus/model 身份后显式加 `--force`。命令不会删除历史 generation，也不会联网获取模型。
 
-## 7. 检索评测
+## 7. 检索检查
 
-当前 v7 知识快照使用 `smoke_v5`；七个核心指南问题使用
-`core_guideline_seven_v2`；19 个美国 CDC 补充证据缺口使用 `cdc_supplemental_v2`。后者专门检验
-Xpert、培养、TST/IGRA、胸片正常、孕期评估、密接、漏服、不良反应、传染性复评和返工返校等
-实体级检索，不能把美国补充证据当作中国或 WHO 路径的替代。`smoke_v1/v2/v3` 与
-`core_guideline_six_v1/v2`、`smoke_v4`、`core_guideline_seven_v1` 和 `cdc_supplemental_v1`
-只保留作历史审计，因绑定旧 corpus generation，不能直接重放到 v7，
-也不能拿旧结果选择当前检索器。
+当前回归场景为 `smoke_v5`、`core_guideline_seven_v2` 和 `cdc_supplemental_v2`。
+配置绑定问题、相关性标签和知识快照。版本化 fixture 用于兼容性与回归检查，
+不同语料版本的结果不能混用。
 
-每个固定 fixture 的 `config.json` 是评测运行契约。命令行在 queries 与 qrels 位于同一目录时会自动
-发现它，但可审计运行仍建议显式传入 `--suite-config`。运行前会严格校验 query/qrels 文件哈希、
-query count、seed、suite/split 身份、knowledge snapshot、source manifest、chunks 与 corpus generation。
-其中旧 smoke fixture 没有单独保存 `query_count` 字段，评测器会从已通过 SHA-256 验证的 queries 文件
-计算并校验条数，同时在报告中记录该来源。
-
-suite 还绑定一份 retrieval config SHA-256。使用 Dense/Hybrid 评测配置替换该基线配置时，必须显式
-传入 `--allow-retrieval-config-override`；否则命令失败。报告会同时保留绑定配置和实际配置的路径、
-哈希、是否匹配以及 override 是否实际发生。该开关只授权比较另一份检索配置，不会放宽 corpus、
-queries、qrels 或 split 身份校验。
-
-BM25 不需要模型或向量索引：
-
-```bash
-python scripts/evaluate_rag_retrieval.py \
-  --queries evaluation/retrieval/smoke_v5/queries.jsonl \
-  --qrels evaluation/retrieval/smoke_v5/qrels.jsonl \
-  --suite-config evaluation/retrieval/smoke_v5/config.json \
-  --knowledge-dir knowledge \
-  --config configs/retrieval.yaml \
-  --modes bm25 \
-  --k 1,3,5,10 \
-  --output <external-runtime>/evaluation/bm25.json \
-  --markdown-output <external-runtime>/evaluation/bm25.md
-```
-
-CDC 补充证据回归使用同一 corpus 和 BM25 配置：
-
-```bash
-python scripts/evaluate_rag_retrieval.py \
-  --queries evaluation/retrieval/cdc_supplemental_v2/queries.jsonl \
-  --qrels evaluation/retrieval/cdc_supplemental_v2/qrels.jsonl \
-  --suite-config evaluation/retrieval/cdc_supplemental_v2/config.json \
-  --knowledge-dir knowledge \
-  --config configs/retrieval.yaml \
-  --modes bm25 \
-  --k 1,3,5,10 \
-  --output <external-runtime>/evaluation/cdc-supplemental-bm25.json \
-  --markdown-output <external-runtime>/evaluation/cdc-supplemental-bm25.md
-```
-
-完成 Dense index 后，在同一 corpus/qrels 上运行：
-
-```bash
-python scripts/evaluate_rag_retrieval.py \
-  --queries evaluation/retrieval/smoke_v5/queries.jsonl \
-  --qrels evaluation/retrieval/smoke_v5/qrels.jsonl \
-  --suite-config evaluation/retrieval/smoke_v5/config.json \
-  --config <external-runtime>/config/retrieval.yaml \
-  --allow-retrieval-config-override \
-  --modes bm25,dense,hybrid \
-  --k 1,3,5,10 \
-  --model-path <external-models>/bge-m3 \
-  --cache-dir <external-cache>/huggingface \
-  --device cpu \
-  --output <external-runtime>/evaluation/three-mode.json \
-  --markdown-output <external-runtime>/evaluation/three-mode.md
-```
-
-报告包含 Recall、MRR、graded nDCG、citation/source recall、hard-negative rejection、p50/p95 latency、
-逐 query retrieved IDs 和失败分类。依赖缺失、stale generation、契约错误和后端不可用作为模式失败
-写入报告；调用者必须检查每个 mode 的 `status`，不能只看进程退出码。
-
-报告还记录 suite 校验结果、Python/平台和关键依赖版本、完整运行 wall time、进程 peak RSS，以及
-torch 已加载且 CUDA 可用时的逐设备 peak allocated/reserved VRAM。报告另外计算 `pyproject.toml + src/**/*.py + scripts/**/*.py` 的确定性
-source-tree manifest SHA-256；它用于标识实际运行源码范围，不能替代正式提交和干净工作树。
-
-同一进程用 `--modes bm25,dense,hybrid` 适合比较确定性质量指标，但不适合直接宣称三种模式的公平
-延迟：Dense 首次查询包含模型校验与冷加载，随后 Hybrid 会复用已热模型。延迟/资源晋级测试应把每个
-mode 放在独立进程中，并分别报告冷启动、显式 warm-up 后延迟、目标并发和峰值资源；当前 CLI 尚未
-自动执行 warm-up 或并发压测。
-
-### 7.1 结果解读
-
-本发布版不附开发工作站历史报告，也不从旧 corpus 的成绩推出当前版本效果。
-BM25 是默认配置；Dense / Hybrid 为显式可选项。fixture 仅供工程回归，不能替代独立、
-经过审核的相关性数据。比较性能需固定语料、模型、配置与硬件，并保留失败结果。
-
-## 8. 本地检查
+BM25 不需要向量模型。固定场景的运行输出应放在仓库外：
 
 ```bash
 python scripts/build_rag_index.py --dry-run
 python scripts/evaluate_rag_retrieval.py \
+  --queries evaluation/retrieval/smoke_v5/queries.jsonl \
+  --qrels evaluation/retrieval/smoke_v5/qrels.jsonl \
   --suite-config evaluation/retrieval/smoke_v5/config.json \
+  --config configs/retrieval.yaml \
   --modes bm25 \
   --output <external-runtime>/evaluation/rag-smoke.json
 pytest tests/test_retrieval.py tests/test_knowledge.py \
   tests/test_rag_index_build.py tests/test_rag_retrieval_evaluation.py
 ```
 
-第一条只验证 corpus/config/identity；第二条是真实 BM25 检索评测；测试中的 fake embedding/Qdrant 只
-验证契约，不代表真实 BGE-M3 性能。真实 Dense/Hybrid 需要另外保存模型/索引身份和运行报告。
+报告区分检索指标、引用覆盖和后端失败，并在外部目录保留配置、源码身份、耗时及失败记录。
+进程正常退出或合成向量测试通过，不代表真实 Dense/Hybrid 检索质量；真实评测需要显式准备
+上文所述模型与匹配索引。
 
-无模型回归另用已安装的真实 qdrant-client 与合成二维向量验证来源过滤先于截断、跨实例并发串行、
-异常释放/再次查询、关闭等待与 generation 切换。这些用例不下载或加载 embedding 模型，也不构成
-真实 Dense 质量或负载测试。
-
-## 9. 评测台账与报告保留
-
-`evaluate_rag_retrieval.py` 在开始评测前建立独立运行目录
-`<output-parent>/evaluation-runs/rag-<uuid>/`，保存 `experiment.sqlite3`、不可覆盖的
-`report.json` / `report.md`。默认中央台账为 `<output-parent>/experiment-ledger.sqlite3`；
-可用 `--ledger <external-runtime>/experiment_ledger.sqlite3` 将多次评测写入同一台账。
-中央台账与单轮事件库必须在同一文件系统，才能用 SQLite 附加数据库事务原子追加。
-台账与报告应使用仓库外的运行目录。
-
-台账保存配置全文、输入文件哈希、suite 假设/seed、源码身份、指标、运行环境、耗时与显存信息。
-RAG 的 `split_hash` 标明是固定评测 queries 的哈希，不冒充训练划分。
-没有测到的字段记录原因。正常完成、检索失败、配置/发布异常及 KeyboardInterrupt 都有终态事件；
-底层审计目录本身不可写，或输出要求修改既有实验目录时，会拒绝执行并报告错误。
-
-退出码维持 0=执行完成、1=模式内检索失败、2=配置或报告写入失败；质量分数仍为描述性指标。
-中断会先记录 interrupted 再向调用方传播。低分、失败及中断记录不会自动删除。
-
-`--output` 与 `--markdown-output` 是便于查看的命名报告；不用 `--force` 时拒绝覆盖。
-使用 `--force` 时，先把旧文件原样归档至新轮目录的 `previous_reports/`，再发布新文件。
-命名报告不可指向中央台账、事件库或任一已登记实验目录。无论发布是否成功，已生成的本轮
-报告、路径与哈希会保留在运行目录/失败事件中。JSON stdout 的 `experiment` 给出固定运行目录。
+已公布结果及适用范围见[测试概览](evaluation.md)。

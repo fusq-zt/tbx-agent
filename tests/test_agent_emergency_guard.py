@@ -95,4 +95,4 @@ def test_emergency_preempts_models_and_cached_visual_evidence(tmp_path, cached_c
     assert result.tool_results == []
     assert result.trace.terminal.reason_code == "emergency_guard"
     assert result.execution_plan["cached_evidence"] == []
-    assert result.execution_plan["graph_node_trace"] == ["load_context", "plan", "finalize"]
+    assert result.execution_plan["graph_node_trace"] == ["load_context", "finalize"]
