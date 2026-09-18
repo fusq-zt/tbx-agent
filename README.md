@@ -109,9 +109,7 @@ Agent 每步最多调用一个工具，根据返回结果决定继续分析还�
 | 真实本地 LLM 对话回归 | **62 轮**合成视觉场景；工具序列 **58/62**、工具与关键文字联合检查 **54/62** |
 | 实现冻结后独立新增问法 | 上述 62 轮中的 **12 轮自动检查全部通过** |
 
-对话评测使用真实本地 MedGemma、合成视觉结果与本地 RAG，不是视觉准确率或临床验证。
-当前仍存在部分状态追问误判和额外检索；小规模自动检查通过不代表所有表述都稳定。
-发布版的实际验证结果、覆盖范围与复现命令见[测试说明](docs/evaluation.md)。
+对话评测使用真实本地 MedGemma、合成视觉结果与本地 RAG；覆盖范围与复现命令见[测试说明](docs/evaluation.md)。
 
 ## 使用真实模型
 
@@ -180,19 +178,15 @@ $visionBundle = Read-Host '已下载的视觉 ZIP 完整路径'
 
 ## 项目文档
 
-| 想了解什么 | 文档 |
+| 内容 | 文档 |
 | --- | --- |
-| 模型安装与 Linux 部署 | [真实模型部署](docs/deployment/inference_models.md) |
-| MedGemma 与 Linux 运行时 | [语言模型部署](docs/deployment/medgemma_runtime.md) |
-| 容器、挂载与网络 | [Docker](docs/deployment/docker.md) |
-| 工具调度、病例状态与接口 | [架构](docs/architecture.md) · [API](docs/api.md) |
-| 指南来源、索引与回执 | [RAG](docs/retrieval.md) · [知识摄取](docs/knowledge_ingestion.md) |
-| 测试与能力限制 | [测试说明](docs/evaluation.md) · [安全边界](docs/safety_case.md) |
-| 参与项目 | [贡献指南](CONTRIBUTING.md) |
+| 部署 | [视觉模型](docs/deployment/inference_models.md) · [语言模型](docs/deployment/medgemma_runtime.md) · [Docker](docs/deployment/docker.md) |
+| 架构与接口 | [架构](docs/architecture.md) · [API](docs/api.md) |
+| 知识检索 | [RAG](docs/retrieval.md) |
+| 测试与说明 | [测试结果](docs/evaluation.md) · [能力说明](docs/safety_case.md) |
 
 ## 使用说明
 
-本项目用于研究与信息辅助，不替代临床判断。肺野分区是二维区域，不代表解剖肺叶；
-软件测试通过不等于临床验证。请仅使用已获授权且去标识的数据。
+本项目用于研究与信息辅助，不替代专业诊断。请使用已获授权且去标识的数据。
 
 项目代码许可证待确定；第三方代码、模型与指南遵循各自条款，详见[第三方来源说明](THIRD_PARTY_NOTICES.md)。
