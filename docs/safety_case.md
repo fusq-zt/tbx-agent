@@ -50,7 +50,7 @@ search_tb_knowledge
 普通问答、问候、能力说明、病例状态、上传时质控和未实现的纵向比较都不是工具。能力说明来自代码
 拥有的产品元数据；“汇总当前已完成分析”只从公开病例证据做确定性投影，二者都不调用 LLM 去解释
 私有 `case_state`，也不产生工具回执。
-`TaskSpec` 仅用于读取旧轨迹的兼容投影，不是主语义路由器，也不授权工具。
+`TaskSpec` 用于兼容投影与规则降级，不是正常路径的主语义路由器，也不独立授权工具。
 
 可演化图状态只保留脱敏 Plan、简短 Observation、预算、当前动作、修订与终止结果。
 service、生成器和 tenant/thread 身份通过 LangGraph `context_schema` 注入，不存入可演化 state。
